@@ -1,7 +1,8 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useRouter } from "next/navigation";
+import showToast from "@/lib/utils/toast";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -10,6 +11,25 @@ interface MobileMenuProps {
 
 export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
   const pathname = usePathname();
+  const router = useRouter();
+
+  const handleLogout = async () => {
+    try {
+      const response = await fetch("/api/auth/logout", {
+        method: "POST",
+      });
+
+      if (response.ok) {
+        showToast.success("Logged out successfully");
+        onClose();
+        router.push("/login");
+      } else {
+        showToast.error("Logout failed");
+      }
+    } catch (error) {
+      showToast.error("An error occurred");
+    }
+  };
 
   const navItems = [
     {
@@ -139,6 +159,29 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
               );
             })}
           </nav>
+
+          {/* Logout button */}
+          <div className="p-4 border-t border-gray-200">
+            <button
+              onClick={handleLogout}
+              className="flex items-center gap-3 px-4 py-3 rounded-lg text-red-600 hover:bg-red-50 w-full transition-all"
+            >
+              <svg
+                className="w-5 h-5"
+                fill="none"
+                stroke="currentColor"
+                viewBox="0 0 24 24"
+              >
+                <path
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                  strokeWidth={2}
+                  d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+                />
+              </svg>
+              <span className="font-medium">Logout</span>
+            </button>
+          </div>
         </div>
       </div>
     </>
