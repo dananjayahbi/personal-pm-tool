@@ -52,8 +52,8 @@ export default function LoginPage() {
 
         {/* Title */}
         <div className="text-center mb-8">
-          <h1 className="text-3xl font-bold text-gray-900">Welcome Back</h1>
-          <p className="text-gray-600 mt-2">Sign in to your account</p>
+          <h1 className="text-3xl font-bold text-black">Welcome Back</h1>
+          <p className="text-black mt-2">Sign in to your account</p>
         </div>
 
         {/* Form */}
@@ -61,7 +61,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-black mb-2"
             >
               Email
             </label>
@@ -79,7 +79,7 @@ export default function LoginPage() {
           <div>
             <label
               htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-2"
+              className="block text-sm font-medium text-black mb-2"
             >
               Password
             </label>
@@ -100,7 +100,7 @@ export default function LoginPage() {
                 type="checkbox"
                 className="w-4 h-4 text-[#2E6F40] border-gray-300 rounded focus:ring-[#2E6F40]"
               />
-              <span className="ml-2 text-sm text-gray-600">Remember me</span>
+              <span className="ml-2 text-sm text-black">Remember me</span>
             </label>
           </div>
 
@@ -115,7 +115,7 @@ export default function LoginPage() {
 
         {/* Footer */}
         <div className="mt-8 text-center">
-          <p className="text-sm text-gray-600">
+          <p className="text-sm text-black">
             This is your personal project management tool
           </p>
         </div>

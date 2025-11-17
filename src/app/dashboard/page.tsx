@@ -1,121 +1,101 @@
+"use client";
+
+import { FileText, ClipboardList, CheckCircle2, TrendingUp } from "lucide-react";
+
 export default function DashboardPage() {
   return (
     <div className="space-y-6">
+      {/* Welcome Section */}
       <div>
         <h1 className="text-3xl font-bold text-gray-900">Dashboard</h1>
         <p className="text-gray-600 mt-2">
-          Welcome to your personal project management tool
+          Welcome to your admin dashboard, Super Administrator!
         </p>
+      </div>
+
+      {/* Info Cards */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        {/* Your Role Card */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Your Role</h3>
+          <p className="text-2xl font-bold text-[#5B4FCF]">SUPERADMIN</p>
+        </div>
+
+        {/* Email Card */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Email</h3>
+          <p className="text-sm text-gray-900">superadmin@dashboard.com</p>
+        </div>
+
+        {/* Status Card */}
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
+          <h3 className="text-sm font-medium text-gray-600 mb-2">Status</h3>
+          <span className="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-800">
+            Active
+          </span>
+        </div>
       </div>
 
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Total Projects</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">0</p>
             </div>
-            <div className="w-12 h-12 bg-[#CFFFDC] rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-[#2E6F40]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"
-                />
-              </svg>
+            <div className="w-12 h-12 bg-[#5B4FCF]/10 rounded-xl flex items-center justify-center">
+              <FileText className="w-6 h-6 text-[#5B4FCF]" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Active Tasks</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">0</p>
             </div>
-            <div className="w-12 h-12 bg-[#CFFFDC] rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-[#2E6F40]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2"
-                />
-              </svg>
+            <div className="w-12 h-12 bg-[#5B4FCF]/10 rounded-xl flex items-center justify-center">
+              <ClipboardList className="w-6 h-6 text-[#5B4FCF]" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Completed</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">0</p>
             </div>
-            <div className="w-12 h-12 bg-[#CFFFDC] rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-[#2E6F40]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"
-                />
-              </svg>
+            <div className="w-12 h-12 bg-[#5B4FCF]/10 rounded-xl flex items-center justify-center">
+              <CheckCircle2 className="w-6 h-6 text-[#5B4FCF]" />
             </div>
           </div>
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6 border border-gray-200">
+        <div className="bg-white rounded-2xl shadow-sm p-6 border border-gray-100">
           <div className="flex items-center justify-between">
             <div>
               <p className="text-sm text-gray-600">Productivity</p>
               <p className="text-2xl font-bold text-gray-900 mt-1">0%</p>
             </div>
-            <div className="w-12 h-12 bg-[#CFFFDC] rounded-lg flex items-center justify-center">
-              <svg
-                className="w-6 h-6 text-[#2E6F40]"
-                fill="none"
-                stroke="currentColor"
-                viewBox="0 0 24 24"
-              >
-                <path
-                  strokeLinecap="round"
-                  strokeLinejoin="round"
-                  strokeWidth={2}
-                  d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"
-                />
-              </svg>
+            <div className="w-12 h-12 bg-[#5B4FCF]/10 rounded-xl flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-[#5B4FCF]" />
             </div>
           </div>
         </div>
       </div>
 
       {/* Recent Activity */}
-      <div className="bg-white rounded-lg shadow border border-gray-200">
-        <div className="p-6 border-b border-gray-200">
+      <div className="bg-white rounded-2xl shadow-sm border border-gray-100">
+        <div className="p-6 border-b border-gray-100">
           <h2 className="text-xl font-semibold text-gray-900">
             Recent Activity
           </h2>
         </div>
         <div className="p-6">
-          <p className="text-gray-500 text-center py-8">
+          <p className="text-gray-600 text-center py-8">
             No recent activity to display
           </p>
         </div>
