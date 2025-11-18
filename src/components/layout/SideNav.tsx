@@ -9,7 +9,9 @@ import {
   Home, 
   Users, 
   Settings,
-  User
+  User,
+  FolderKanban,
+  Kanban
 } from "lucide-react";
 
 interface NavItem {
@@ -46,6 +48,16 @@ export default function SideNav() {
       icon: <Home className="w-6 h-6" />,
     },
     {
+      name: "Projects",
+      href: "/projects",
+      icon: <FolderKanban className="w-6 h-6" />,
+    },
+    {
+      name: "Task Board",
+      href: "/task-board",
+      icon: <Kanban className="w-6 h-6" />,
+    },
+    {
       name: "User Management",
       href: "/user-management",
       icon: <Users className="w-6 h-6" />,
@@ -70,11 +82,11 @@ export default function SideNav() {
 
         {/* Navigation Icons */}
         <nav className="flex-1 flex flex-col items-center space-y-4 w-full">
-          {navItems.map((item, index) => {
-            const isActive = pathname === item.href && index === 0;
+          {navItems.map((item) => {
+            const isActive = pathname === item.href;
             return (
               <Link
-                key={item.href + index}
+                key={item.href}
                 href={item.href}
                 className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-200 ${
                   isActive

@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import showToast from "@/lib/utils/toast";
-import { LayoutGrid, Home, Users, Settings, X, LogOut } from "lucide-react";
+import { LayoutGrid, Home, Users, Settings, X, LogOut, FolderKanban, Kanban } from "lucide-react";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -17,6 +17,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
 
   const navItems = [
     { name: "Dashboard", icon: Home, href: "/dashboard" },
+    { name: "Projects", icon: FolderKanban, href: "/projects" },
+    { name: "Task Board", icon: Kanban, href: "/task-board" },
     { name: "User Management", icon: Users, href: "/user-management" },
     { name: "Settings", icon: Settings, href: "/settings" },
   ];
@@ -49,7 +51,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
       />
 
       {/* Mobile Menu Panel */}
-      <div className="fixed inset-y-0 left-0 w-72 bg-linear-to-b from-[#5B4FCF] via-[#7C6FDE] to-[#5B4FCF] z-50 lg:hidden flex flex-col">
+      <div className="fixed inset-y-0 left-0 w-72 bg-linear-to-b from-[#2E6F40] via-[#68BA7F] to-[#253D2C] z-50 lg:hidden flex flex-col">
         {/* Header */}
         <div className="flex items-center justify-between p-6 border-b border-white/10">
           <div className="flex items-center gap-3">
@@ -78,7 +80,7 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
                 onClick={onClose}
                 className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
                   isActive
-                    ? "bg-white text-[#5B4FCF]"
+                    ? "bg-white text-[#2E6F40]"
                     : "text-white/80 hover:bg-white/10 hover:text-white"
                 }`}
               >
