@@ -1,8 +1,10 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Plus, Pencil, Trash2, GripVertical } from "lucide-react";
 import showToast from "@/lib/utils/toast";
+import KanbanColumn from "@/components/common/KanbanColumn";
+import TaskModal from "@/components/common/TaskModal";
+import DeleteConfirmModal from "@/components/common/DeleteConfirmModal";
 
 interface Project {
   id: string;
@@ -184,7 +186,7 @@ export default function TaskBoardPage() {
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
-    
+
     setLoading(true);
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
@@ -223,6 +225,22 @@ export default function TaskBoardPage() {
   const openAddModal = (status: string) => {
     setSelectedStatus(status);
     setIsAddModalOpen(true);
+  };
+
+  const closeAddModal = () => {
+    setIsAddModalOpen(false);
+    setFormData({ title: "", description: "" });
+  };
+
+  const closeEditModal = () => {
+    setIsEditModalOpen(false);
+    setSelectedTask(null);
+    setFormData({ title: "", description: "" });
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedTask(null);
   };
 
   const getTasksByStatus = (status: string) => {
@@ -274,234 +292,54 @@ export default function TaskBoardPage() {
       {/* Kanban Board */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {statuses.map((status) => (
-          <div
+          <KanbanColumn
             key={status.id}
-            className="bg-white rounded-2xl shadow-sm border border-gray-100 p-4"
+            status={status}
+            tasks={getTasksByStatus(status.id)}
+            onAddTask={openAddModal}
+            onEditTask={openEditModal}
+            onDeleteTask={openDeleteModal}
+            onDragStart={handleDragStart}
             onDragOver={handleDragOver}
-            onDrop={(e) => handleDrop(e, status.id)}
-          >
-            {/* Column Header */}
-            <div className="flex justify-between items-center mb-4">
-              <div className="flex items-center gap-2">
-                <div className={`w-3 h-3 rounded-full ${status.color}`} />
-                <h3 className="font-semibold text-gray-900">{status.label}</h3>
-                <span className="text-sm text-black bg-gray-100 px-2 py-0.5 rounded-full">
-                  {getTasksByStatus(status.id).length}
-                </span>
-              </div>
-              <button
-                onClick={() => openAddModal(status.id)}
-                className="p-1 text-[#2E6F40] hover:bg-[#CFFFDC] rounded transition-colors"
-                title="Add task"
-              >
-                <Plus className="w-5 h-5" />
-              </button>
-            </div>
-
-            {/* Tasks */}
-            <div className="space-y-3 min-h-[400px]">
-              {getTasksByStatus(status.id).map((task) => (
-                <div
-                  key={task.id}
-                  draggable
-                  onDragStart={(e) => handleDragStart(e, task.id)}
-                  className="bg-gray-50 rounded-lg p-3 cursor-move hover:shadow-md transition-shadow border border-gray-100"
-                >
-                  <div className="flex items-start gap-2">
-                    <GripVertical className="w-4 h-4 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-medium text-gray-900 mb-1">
-                        {task.title}
-                      </h4>
-                      {task.description && (
-                        <p className="text-sm text-black line-clamp-2">
-                          {task.description}
-                        </p>
-                      )}
-                    </div>
-                  </div>
-                  <div className="flex items-center justify-end gap-1 mt-2">
-                    <button
-                      onClick={() => openEditModal(task)}
-                      className="p-1.5 text-[#2E6F40] hover:bg-[#CFFFDC] rounded transition-colors"
-                      title="Edit"
-                    >
-                      <Pencil className="w-3.5 h-3.5" />
-                    </button>
-                    <button
-                      onClick={() => openDeleteModal(task)}
-                      className="p-1.5 text-red-600 hover:bg-red-50 rounded transition-colors"
-                      title="Delete"
-                    >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
+            onDrop={handleDrop}
+          />
         ))}
       </div>
 
       {/* Add Task Modal */}
-      {isAddModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Add New Task
-            </h2>
-            <form onSubmit={handleAddTask} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Task Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black"
-                  placeholder="Enter task title"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black resize-none"
-                  placeholder="Enter task description"
-                  rows={3}
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsAddModalOpen(false);
-                    setFormData({ title: "", description: "" });
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors"
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-[#2E6F40] text-white rounded-lg hover:bg-[#253D2C] transition-colors disabled:opacity-50"
-                  disabled={loading}
-                >
-                  {loading ? "Creating..." : "Create Task"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <TaskModal
+        isOpen={isAddModalOpen}
+        onClose={closeAddModal}
+        onSubmit={handleAddTask}
+        formData={formData}
+        setFormData={setFormData}
+        loading={loading}
+        title="Add New Task"
+        submitText="Create Task"
+      />
 
       {/* Edit Task Modal */}
-      {isEditModalOpen && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Edit Task
-            </h2>
-            <form onSubmit={handleEditTask} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Task Title <span className="text-red-500">*</span>
-                </label>
-                <input
-                  type="text"
-                  value={formData.title}
-                  onChange={(e) =>
-                    setFormData({ ...formData, title: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black"
-                  placeholder="Enter task title"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-900 mb-2">
-                  Description
-                </label>
-                <textarea
-                  value={formData.description}
-                  onChange={(e) =>
-                    setFormData({ ...formData, description: e.target.value })
-                  }
-                  className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black resize-none"
-                  placeholder="Enter task description"
-                  rows={3}
-                />
-              </div>
-              <div className="flex gap-3 pt-4">
-                <button
-                  type="button"
-                  onClick={() => {
-                    setIsEditModalOpen(false);
-                    setSelectedTask(null);
-                    setFormData({ title: "", description: "" });
-                  }}
-                  className="flex-1 px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors"
-                  disabled={loading}
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  className="flex-1 px-4 py-2 bg-[#2E6F40] text-white rounded-lg hover:bg-[#253D2C] transition-colors disabled:opacity-50"
-                  disabled={loading}
-                >
-                  {loading ? "Updating..." : "Update Task"}
-                </button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <TaskModal
+        isOpen={isEditModalOpen}
+        onClose={closeEditModal}
+        onSubmit={handleEditTask}
+        formData={formData}
+        setFormData={setFormData}
+        loading={loading}
+        title="Edit Task"
+        submitText="Update Task"
+      />
 
       {/* Delete Confirmation Modal */}
-      {isDeleteModalOpen && selectedTask && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <div className="bg-white rounded-2xl shadow-xl max-w-md w-full p-6">
-            <h2 className="text-2xl font-bold text-gray-900 mb-4">
-              Delete Task
-            </h2>
-            <p className="text-black mb-6">
-              Are you sure you want to delete{" "}
-              <span className="font-semibold">{selectedTask.title}</span>? This
-              action cannot be undone.
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => {
-                  setIsDeleteModalOpen(false);
-                  setSelectedTask(null);
-                }}
-                className="flex-1 px-4 py-2 border border-gray-200 text-gray-900 rounded-lg hover:bg-gray-50 transition-colors"
-                disabled={loading}
-              >
-                Cancel
-              </button>
-              <button
-                onClick={handleDeleteTask}
-                className="flex-1 px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors disabled:opacity-50"
-                disabled={loading}
-              >
-                {loading ? "Deleting..." : "Delete"}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteTask}
+        loading={loading}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${selectedTask?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
+      />
     </div>
   );
 }
