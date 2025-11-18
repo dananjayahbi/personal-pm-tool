@@ -3,7 +3,7 @@ import { validateSession } from "@/lib/auth";
 
 export async function GET(request: NextRequest) {
   try {
-    const token = request.cookies.get("session")?.value;
+    const token = request.cookies.get("session_token")?.value;
 
     if (!token) {
       return NextResponse.json({ user: null }, { status: 200 });

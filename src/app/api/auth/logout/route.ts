@@ -3,7 +3,7 @@ import { deleteSession } from "@/lib/auth";
 
 export async function POST(request: NextRequest) {
   try {
-    const token = request.cookies.get("session")?.value;
+    const token = request.cookies.get("session_token")?.value;
 
     if (token) {
       await deleteSession(token);
@@ -14,7 +14,7 @@ export async function POST(request: NextRequest) {
       { status: 200 }
     );
 
-    response.cookies.delete("session");
+    response.cookies.delete("session_token");
 
     return response;
   } catch (error) {
