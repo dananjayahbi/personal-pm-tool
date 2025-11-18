@@ -2,7 +2,7 @@
 
 :root {
   --background: #ffffff;
-  --foreground: #171717;
+  --foreground: #000000;
   
   /* Custom color palette */
   --color-primary-dark: #2E6F40;
@@ -30,6 +30,7 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
+  color: #000000;
 }
 
 /* Scrollbar styling */

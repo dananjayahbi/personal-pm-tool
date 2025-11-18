@@ -8,12 +8,7 @@ import {
   LayoutGrid, 
   Home, 
   Users, 
-  ClipboardList, 
-  Settings, 
-  FolderOpen, 
-  Database, 
-  MessageSquare, 
-  Globe,
+  Settings,
   User
 } from "lucide-react";
 
@@ -56,41 +51,16 @@ export default function SideNav() {
       icon: <Users className="w-6 h-6" />,
     },
     {
-      name: "Tasks",
-      href: "/settings",
-      icon: <ClipboardList className="w-6 h-6" />,
-    },
-    {
       name: "Settings",
       href: "/settings",
       icon: <Settings className="w-6 h-6" />,
-    },
-    {
-      name: "Files",
-      href: "/settings",
-      icon: <FolderOpen className="w-6 h-6" />,
-    },
-    {
-      name: "Database",
-      href: "/settings",
-      icon: <Database className="w-6 h-6" />,
-    },
-    {
-      name: "Messages",
-      href: "/settings",
-      icon: <MessageSquare className="w-6 h-6" />,
-    },
-    {
-      name: "Network",
-      href: "/settings",
-      icon: <Globe className="w-6 h-6" />,
     },
   ];
 
   return (
     <aside className="w-20 h-screen sticky top-0 hidden lg:flex overflow-hidden">
-      {/* Gradient background matching UI reference */}
-      <div className="w-full h-full bg-linear-to-b from-[#5B4FCF] via-[#7C6FDE] to-[#5B4FCF] flex flex-col items-center py-6 px-3">
+      {/* Gradient background matching color palette */}
+      <div className="w-full h-full bg-linear-to-b from-[#2E6F40] via-[#68BA7F] to-[#253D2C] flex flex-col items-center py-6 px-3">
         {/* Logo/Icon at top */}
         <div className="flex justify-center mb-8">
           <div className="w-12 h-12 bg-white/10 backdrop-blur-sm rounded-2xl flex items-center justify-center hover:bg-white/20 transition-all cursor-pointer">
@@ -108,7 +78,7 @@ export default function SideNav() {
                 href={item.href}
                 className={`w-12 h-12 flex items-center justify-center rounded-2xl transition-all duration-200 ${
                   isActive
-                    ? "bg-white text-[#5B4FCF] shadow-lg"
+                    ? "bg-white text-[#2E6F40] shadow-lg"
                     : "text-white/70 hover:text-white hover:bg-white/10"
                 }`}
                 title={item.name}
