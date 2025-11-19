@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import showToast from "@/lib/utils/toast";
-import FullPageLoader from "@/components/common/FullPageLoader";
+import TableSkeleton from "@/components/common/TableSkeleton";
 import ProjectModal from "./components/ProjectModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import ProjectsTable from "./components/ProjectsTable";
@@ -169,10 +169,6 @@ export default function ProjectsPage() {
     setSelectedProject(null);
   };
 
-  if (pageLoading) {
-    return <FullPageLoader />;
-  }
-
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -192,12 +188,16 @@ export default function ProjectsPage() {
         </button>
       </div>
 
-      {/* Projects Table */}
-      <ProjectsTable
-        projects={projects}
-        onEdit={openEditModal}
-        onDelete={openDeleteModal}
-      />
+      {/* Projects Table or Skeleton */}
+      {pageLoading ? (
+        <TableSkeleton />
+      ) : (
+        <ProjectsTable
+          projects={projects}
+          onEdit={openEditModal}
+          onDelete={openDeleteModal}
+        />
+      )}
 
       {/* Add Project Modal */}
       <ProjectModal

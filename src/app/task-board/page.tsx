@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import showToast from "@/lib/utils/toast";
-import FullPageLoader from "@/components/common/FullPageLoader";
+import KanbanSkeleton from "@/components/common/KanbanSkeleton";
 import KanbanColumn from "./components/KanbanColumn";
 import TaskModal from "./components/TaskModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
@@ -252,7 +252,19 @@ export default function TaskBoardPage() {
   };
 
   if (pageLoading) {
-    return <FullPageLoader />;
+    return (
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
+            <p className="text-black mt-2">Manage your tasks with Kanban board</p>
+          </div>
+        </div>
+        {/* Skeleton Loader */}
+        <KanbanSkeleton />
+      </div>
+    );
   }
 
   if (projects.length === 0) {
