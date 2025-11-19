@@ -17,6 +17,7 @@ interface KanbanColumnProps {
     color: string;
   };
   tasks: Task[];
+  projectColor: string;
   onAddTask: (statusId: string) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
@@ -28,6 +29,7 @@ interface KanbanColumnProps {
 export default function KanbanColumn({
   status,
   tasks,
+  projectColor,
   onAddTask,
   onEditTask,
   onDeleteTask,
@@ -65,6 +67,7 @@ export default function KanbanColumn({
           <TaskCard
             key={task.id}
             task={task}
+            projectColor={projectColor}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
             onDragStart={onDragStart}

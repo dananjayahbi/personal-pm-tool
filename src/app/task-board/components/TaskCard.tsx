@@ -11,6 +11,7 @@ interface Task {
 
 interface TaskCardProps {
   task: Task;
+  projectColor: string;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
@@ -18,15 +19,28 @@ interface TaskCardProps {
 
 export default function TaskCard({
   task,
+  projectColor,
   onEdit,
   onDelete,
   onDragStart,
 }: TaskCardProps) {
+  // Convert hex color to RGB and apply opacity
+  const hexToRgba = (hex: string, opacity: number) => {
+    const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
+    if (!result) return `rgba(91, 79, 207, ${opacity})`; // fallback
+    return `rgba(${
+      parseInt(result[1], 16)}, ${
+      parseInt(result[2], 16)}, ${
+      parseInt(result[3], 16)}, ${
+      opacity})`;
+  };
+
   return (
     <div
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
-      className="bg-gray-50 rounded-lg p-3 cursor-move hover:shadow-md transition-shadow border border-gray-100"
+      className="rounded-lg p-3 cursor-move hover:shadow-md transition-all border border-gray-100"
+      style={{ backgroundColor: hexToRgba(projectColor, 0.25) }}
     >
       <div className="flex items-start gap-2">
         <GripVertical className="w-4 h-4 text-gray-400 mt-0.5 shrink-0" />

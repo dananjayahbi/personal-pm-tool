@@ -6,10 +6,12 @@ import KanbanSkeleton from "./components/KanbanSkeleton";
 import KanbanColumn from "./components/KanbanColumn";
 import TaskModal from "./components/TaskModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
+import ProjectDropdown from "./components/ProjectDropdown";
 
 interface Project {
   id: string;
   name: string;
+  color: string;
 }
 
 interface Task {
@@ -32,6 +34,7 @@ export default function TaskBoardPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
+  const [tasksLoading, setTasksLoading] = useState(false);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -80,6 +83,7 @@ export default function TaskBoardPage() {
   };
 
   const fetchTasks = async (projectId: string) => {
+    setTasksLoading(true);
     try {
       const response = await fetch(`/api/projects/${projectId}/tasks`);
       if (response.ok) {
@@ -88,6 +92,8 @@ export default function TaskBoardPage() {
       }
     } catch (error) {
       showToast.error("Failed to fetch tasks");
+    } finally {
+      setTasksLoading(false);
     }
   };
 
@@ -191,7 +197,21 @@ export default function TaskBoardPage() {
     e.preventDefault();
     const taskId = e.dataTransfer.getData("taskId");
 
-    setLoading(true);
+    // Find the task being moved
+    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    if (!taskToUpdate) return;
+
+    // Store the old status for potential rollback
+    const oldStatus = taskToUpdate.status;
+
+    // Optimistic UI update - update immediately
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
+
+    // Update database in background
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
@@ -199,16 +219,23 @@ export default function TaskBoardPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        showToast.success("Task status updated");
-        fetchTasks(selectedProjectId);
-      } else {
+      if (!response.ok) {
+        // Rollback on failure
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.id === taskId ? { ...task, status: oldStatus } : task
+          )
+        );
         showToast.error("Failed to update task status");
       }
     } catch (error) {
+      // Rollback on error
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, status: oldStatus } : task
+        )
+      );
       showToast.error("An error occurred");
-    } finally {
-      setLoading(false);
     }
   };
 
@@ -295,36 +322,35 @@ export default function TaskBoardPage() {
           <p className="text-black mt-2">Manage your tasks with Kanban board</p>
         </div>
         <div className="flex items-center gap-4">
-          <select
-            value={selectedProjectId}
-            onChange={(e) => setSelectedProjectId(e.target.value)}
-            className="px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black bg-white"
-          >
-            {projects.map((project) => (
-              <option key={project.id} value={project.id}>
-                {project.name}
-              </option>
-            ))}
-          </select>
+          <ProjectDropdown
+            projects={projects}
+            selectedProjectId={selectedProjectId}
+            onSelect={setSelectedProjectId}
+          />
         </div>
       </div>
 
       {/* Kanban Board */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {statuses.map((status) => (
-          <KanbanColumn
-            key={status.id}
-            status={status}
-            tasks={getTasksByStatus(status.id)}
-            onAddTask={openAddModal}
-            onEditTask={openEditModal}
-            onDeleteTask={openDeleteModal}
-            onDragStart={handleDragStart}
-            onDragOver={handleDragOver}
-            onDrop={handleDrop}
-          />
-        ))}
-      </div>
+      {tasksLoading ? (
+        <KanbanSkeleton />
+      ) : (
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          {statuses.map((status) => (
+            <KanbanColumn
+              key={status.id}
+              status={status}
+              tasks={getTasksByStatus(status.id)}
+              projectColor={projects.find(p => p.id === selectedProjectId)?.color || "#5B4FCF"}
+              onAddTask={openAddModal}
+              onEditTask={openEditModal}
+              onDeleteTask={openDeleteModal}
+              onDragStart={handleDragStart}
+              onDragOver={handleDragOver}
+              onDrop={handleDrop}
+            />
+          ))}
+        </div>
+      )}
 
       {/* Add Task Modal */}
       <TaskModal

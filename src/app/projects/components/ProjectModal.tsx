@@ -3,6 +3,7 @@ interface Project {
   name: string;
   description: string | null;
   startDate: string | null;
+  color: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -11,6 +12,7 @@ interface ProjectFormData {
   name: string;
   description: string;
   startDate: string;
+  color: string;
 }
 
 interface ProjectModalProps {
@@ -82,6 +84,32 @@ export default function ProjectModal({
               }
               className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black"
             />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black mb-2">
+              Project Color
+            </label>
+            <div className="flex gap-3 items-center">
+              <input
+                type="color"
+                value={formData.color}
+                onChange={(e) =>
+                  setFormData({ ...formData, color: e.target.value })
+                }
+                className="w-16 h-10 rounded border border-gray-200 cursor-pointer"
+              />
+              <input
+                type="text"
+                value={formData.color}
+                onChange={(e) =>
+                  setFormData({ ...formData, color: e.target.value })
+                }
+                className="flex-1 px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black"
+                placeholder="#5B4FCF"
+                pattern="^#[0-9A-Fa-f]{6}$"
+              />
+            </div>
+            <p className="text-xs text-gray-500 mt-1">Choose a color to identify your project</p>
           </div>
           <div className="flex gap-3 pt-4">
             <button

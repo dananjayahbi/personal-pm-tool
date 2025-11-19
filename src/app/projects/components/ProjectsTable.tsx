@@ -5,6 +5,7 @@ interface Project {
   name: string;
   description: string | null;
   startDate: string | null;
+  color: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -26,6 +27,9 @@ export default function ProjectsTable({
         <table className="w-full">
           <thead className="bg-gray-50 border-b border-gray-100">
             <tr>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-black w-12">
+                Color
+              </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-black">
                 Project Name
               </th>
@@ -46,13 +50,20 @@ export default function ProjectsTable({
           <tbody className="divide-y divide-gray-100">
             {projects.length === 0 ? (
               <tr>
-                <td colSpan={5} className="px-6 py-8 text-center text-black">
+                <td colSpan={6} className="px-6 py-8 text-center text-black">
                   No projects yet. Create your first project to get started!
                 </td>
               </tr>
             ) : (
               projects.map((project) => (
                 <tr key={project.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4">
+                    <div
+                      className="w-8 h-8 rounded-lg border border-gray-200"
+                      style={{ backgroundColor: project.color }}
+                      title={project.color}
+                    />
+                  </td>
                   <td className="px-6 py-4 text-sm text-black font-medium">
                     {project.name}
                   </td>

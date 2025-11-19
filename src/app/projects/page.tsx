@@ -13,6 +13,7 @@ interface Project {
   name: string;
   description: string | null;
   startDate: string | null;
+  color: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -31,6 +32,7 @@ export default function ProjectsPage() {
     name: "",
     description: "",
     startDate: "",
+    color: "#5B4FCF",
   });
 
   useEffect(() => {
@@ -69,7 +71,7 @@ export default function ProjectsPage() {
       if (response.ok) {
         showToast.success("Project created successfully");
         setIsAddModalOpen(false);
-        setFormData({ name: "", description: "", startDate: "" });
+        setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
         fetchProjects();
       } else {
         showToast.error("Failed to create project");
@@ -100,7 +102,7 @@ export default function ProjectsPage() {
         showToast.success("Project updated successfully");
         setIsEditModalOpen(false);
         setSelectedProject(null);
-        setFormData({ name: "", description: "", startDate: "" });
+        setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
         fetchProjects();
       } else {
         showToast.error("Failed to update project");
@@ -144,6 +146,7 @@ export default function ProjectsPage() {
       startDate: project.startDate
         ? new Date(project.startDate).toISOString().split("T")[0]
         : "",
+      color: project.color || "#5B4FCF",
     });
     setIsEditModalOpen(true);
   };
@@ -155,13 +158,13 @@ export default function ProjectsPage() {
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    setFormData({ name: "", description: "", startDate: "" });
+    setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedProject(null);
-    setFormData({ name: "", description: "", startDate: "" });
+    setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
   };
 
   const closeDeleteModal = () => {
