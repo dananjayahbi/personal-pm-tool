@@ -4,7 +4,7 @@ import { useState, useEffect } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { ArrowLeft, Plus } from "lucide-react";
 import showToast from "@/lib/utils/toast";
-import PlanningCardGallery from "../components/PlanningCardGallery";
+import RoadmapGallery from "../components/RoadmapGallery";
 import PlanningTaskModal from "../components/PlanningTaskModal";
 import DeleteConfirmModal from "../components/DeleteConfirmModal";
 
@@ -289,8 +289,8 @@ export default function ProjectPlanningPage() {
         </button>
       </div>
 
-      {/* Planning Card Gallery */}
-      <PlanningCardGallery
+      {/* Roadmap Gallery */}
+      <RoadmapGallery
         tasks={tasks}
         projectColor={project.color}
         onEdit={openEditModal}
