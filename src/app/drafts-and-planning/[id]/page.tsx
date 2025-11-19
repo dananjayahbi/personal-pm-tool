@@ -6,6 +6,7 @@ import { ArrowLeft, Plus } from "lucide-react";
 import showToast from "@/lib/utils/toast";
 import PlanningCardGallery from "../components/PlanningCardGallery";
 import PlanningTaskModal from "../components/PlanningTaskModal";
+import DeleteConfirmModal from "../components/DeleteConfirmModal";
 
 interface Project {
   id: string;
@@ -41,6 +42,7 @@ export default function ProjectPlanningPage() {
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<PlanningTask | null>(null);
 
   // Form state
@@ -97,7 +99,22 @@ export default function ProjectPlanningPage() {
       return;
     }
 
-    setLoading(true);
+    // Create a temporary task ID for the skeleton
+    const tempId = `temp-${Date.now()}`;
+    const tempTask: PlanningTask = {
+      id: tempId,
+      title: formData.title,
+      description: formData.description,
+      order: tasks.length + 1,
+      projectId,
+    };
+
+    // Optimistic UI: Add skeleton card immediately and close modal
+    setTasks((prevTasks) => [...prevTasks, tempTask]);
+    setIsAddModalOpen(false);
+    setFormData({ title: "", description: "" });
+
+    // Add to database in background
     try {
       const response = await fetch(`/api/projects/${projectId}/tasks`, {
         method: "POST",
@@ -110,14 +127,17 @@ export default function ProjectPlanningPage() {
 
       if (response.ok) {
         showToast.success("Planning task created successfully");
-        setIsAddModalOpen(false);
-        setFormData({ title: "", description: "" });
-        fetchPlanningTasks();
+        // Refresh tasks to replace skeleton with actual data
+        await fetchPlanningTasks();
       } else {
         showToast.error("Failed to create planning task");
+        // Remove the skeleton task on failure
+        setTasks((prevTasks) => prevTasks.filter((t) => t.id !== tempId));
       }
     } catch (error) {
       showToast.error("An error occurred");
+      // Remove the skeleton task on error
+      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== tempId));
     } finally {
       setLoading(false);
     }
@@ -154,15 +174,19 @@ export default function ProjectPlanningPage() {
     }
   };
 
-  const handleDeleteTask = async (taskId: string) => {
+  const handleDeleteTask = async () => {
+    if (!selectedTask) return;
+
     setLoading(true);
     try {
-      const response = await fetch(`/api/tasks/${taskId}`, {
+      const response = await fetch(`/api/tasks/${selectedTask.id}`, {
         method: "DELETE",
       });
 
       if (response.ok) {
         showToast.success("Planning task deleted successfully");
+        setIsDeleteModalOpen(false);
+        setSelectedTask(null);
         fetchPlanningTasks();
       } else {
         showToast.error("Failed to delete planning task");
@@ -172,6 +196,16 @@ export default function ProjectPlanningPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const openDeleteModal = (task: PlanningTask) => {
+    setSelectedTask(task);
+    setIsDeleteModalOpen(true);
+  };
+
+  const closeDeleteModal = () => {
+    setIsDeleteModalOpen(false);
+    setSelectedTask(null);
   };
 
   const openEditModal = (task: PlanningTask) => {
@@ -260,7 +294,7 @@ export default function ProjectPlanningPage() {
         tasks={tasks}
         projectColor={project.color}
         onEdit={openEditModal}
-        onDelete={handleDeleteTask}
+        onDelete={openDeleteModal}
         loading={loading}
       />
 
@@ -286,6 +320,17 @@ export default function ProjectPlanningPage() {
         loading={loading}
         title="Edit Planning Task"
         submitText="Update Task"
+      />
+
+      {/* Delete Confirmation Modal */}
+      <DeleteConfirmModal
+        isOpen={isDeleteModalOpen}
+        onClose={closeDeleteModal}
+        onConfirm={handleDeleteTask}
+        loading={loading}
+        title="Delete Planning Task"
+        message={`Are you sure you want to delete "${selectedTask?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
       />
     </div>
   );

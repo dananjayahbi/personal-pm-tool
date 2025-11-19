@@ -12,8 +12,34 @@ interface PlanningCardGalleryProps {
   tasks: PlanningTask[];
   projectColor: string;
   onEdit: (task: PlanningTask) => void;
-  onDelete: (taskId: string) => void;
+  onDelete: (task: PlanningTask) => void;
   loading: boolean;
+}
+
+function PlanningSkeletonCard() {
+  return (
+    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+      <div className="p-6 bg-linear-to-b from-gray-100 to-white">
+        {/* Order Badge Skeleton */}
+        <div className="flex items-start justify-between mb-3">
+          <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
+        </div>
+
+        {/* Title Skeleton */}
+        <div className="space-y-2 mb-3">
+          <div className="h-6 bg-gray-200 rounded animate-pulse w-3/4"></div>
+          <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
+        </div>
+
+        {/* Description Skeleton */}
+        <div className="space-y-2">
+          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
+          <div className="h-4 bg-gray-200 rounded animate-pulse w-5/6"></div>
+          <div className="h-4 bg-gray-200 rounded animate-pulse w-4/6"></div>
+        </div>
+      </div>
+    </div>
+  );
 }
 
 export default function PlanningCardGallery({
@@ -64,63 +90,72 @@ export default function PlanningCardGallery({
 
   return (
     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {sortedTasks.map((task, index) => (
-        <div
-          key={task.id}
-          className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group"
-          style={{
-            borderLeftWidth: "4px",
-            borderLeftColor: projectColor,
-          }}
-        >
+      {sortedTasks.map((task, index) => {
+        // Check if it's a temporary task (skeleton)
+        const isTemporary = task.id.startsWith("temp-");
+
+        if (isTemporary) {
+          return <PlanningSkeletonCard key={task.id} />;
+        }
+
+        return (
           <div
-            className="p-6"
+            key={task.id}
+            className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group"
             style={{
-              background: `linear-gradient(to bottom, ${hexToRgba(projectColor, 0.05)}, white)`,
+              borderLeftWidth: "4px",
+              borderLeftColor: projectColor,
             }}
           >
-            {/* Order Badge */}
-            <div className="flex items-start justify-between mb-3">
-              <div
-                className="flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold"
-                style={{ backgroundColor: projectColor }}
-              >
-                {index + 1}
-              </div>
-              <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                <button
-                  onClick={() => onEdit(task)}
-                  disabled={loading}
-                  className="p-2 text-[#2E6F40] hover:bg-[#CFFFDC] rounded-lg transition-colors disabled:opacity-50"
-                  title="Edit"
+            <div
+              className="p-6"
+              style={{
+                background: `linear-gradient(to bottom, ${hexToRgba(projectColor, 0.05)}, white)`,
+              }}
+            >
+              {/* Order Badge */}
+              <div className="flex items-start justify-between mb-3">
+                <div
+                  className="flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold"
+                  style={{ backgroundColor: projectColor }}
                 >
-                  <Pencil className="w-4 h-4" />
-                </button>
-                <button
-                  onClick={() => onDelete(task.id)}
-                  disabled={loading}
-                  className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                  title="Delete"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
+                  {index + 1}
+                </div>
+                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                  <button
+                    onClick={() => onEdit(task)}
+                    disabled={loading}
+                    className="p-2 text-[#2E6F40] hover:bg-[#CFFFDC] rounded-lg transition-colors disabled:opacity-50"
+                    title="Edit"
+                  >
+                    <Pencil className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => onDelete(task)}
+                    disabled={loading}
+                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                    title="Delete"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
+
+              {/* Task Title */}
+              <h3 className="text-lg font-semibold text-black mb-2 line-clamp-2">
+                {task.title}
+              </h3>
+
+              {/* Task Description */}
+              {task.description && (
+                <p className="text-sm text-gray-600 line-clamp-3">
+                  {task.description}
+                </p>
+              )}
             </div>
-
-            {/* Task Title */}
-            <h3 className="text-lg font-semibold text-black mb-2 line-clamp-2">
-              {task.title}
-            </h3>
-
-            {/* Task Description */}
-            {task.description && (
-              <p className="text-sm text-gray-600 line-clamp-3">
-                {task.description}
-              </p>
-            )}
           </div>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }
