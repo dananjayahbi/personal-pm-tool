@@ -15,6 +15,10 @@ interface TaskCardProps {
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
+  onDragOver?: (e: React.DragEvent, taskId: string) => void;
+  onDrop?: (e: React.DragEvent, taskId: string) => void;
+  onDragLeave?: () => void;
+  isDraggedOver?: boolean;
 }
 
 export default function TaskCard({
@@ -23,9 +27,27 @@ export default function TaskCard({
   onEdit,
   onDelete,
   onDragStart,
+  onDragOver,
+  onDrop,
+  onDragLeave,
+  isDraggedOver = false,
 }: TaskCardProps) {
   // Check if this is a temporary task (skeleton)
-  const isTemporary = task.id.startsWith("temp-");
+  const isTemporary = task.id.startsWith('temp-');
+
+  // Handle drag over with position detection
+  const handleDragOverInternal = (e: React.DragEvent) => {
+    if (onDragOver) {
+      onDragOver(e, task.id);
+    }
+  };
+
+  // Handle drop with position detection
+  const handleDropInternal = (e: React.DragEvent) => {
+    if (onDrop) {
+      onDrop(e, task.id);
+    }
+  };
 
   // Convert hex color to RGB and apply opacity
   const hexToRgba = (hex: string, opacity: number) => {
@@ -58,7 +80,12 @@ export default function TaskCard({
     <div
       draggable
       onDragStart={(e) => onDragStart(e, task.id)}
-      className="rounded-lg p-3 cursor-move hover:shadow-md transition-all border border-gray-100"
+      onDragOver={handleDragOverInternal}
+      onDrop={handleDropInternal}
+      onDragLeave={onDragLeave}
+      className={`rounded-lg p-3 cursor-move hover:shadow-md transition-all border ${
+        isDraggedOver ? 'border-2 border-blue-500 border-dashed' : 'border-gray-100'
+      }`}
       style={{ backgroundColor: hexToRgba(projectColor, 0.25) }}
     >
       <div className="flex items-start gap-2">

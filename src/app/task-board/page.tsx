@@ -36,6 +36,7 @@ export default function TaskBoardPage() {
   const [loading, setLoading] = useState(false);
   const [pageLoading, setPageLoading] = useState(true);
   const [tasksLoading, setTasksLoading] = useState(false);
+  const [draggedOverTask, setDraggedOverTask] = useState<string | null>(null);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -87,8 +88,10 @@ export default function TaskBoardPage() {
     }
   };
 
-  const fetchTasks = async (projectId: string) => {
-    setTasksLoading(true);
+  const fetchTasks = async (projectId: string, silent: boolean = false) => {
+    if (!silent) {
+      setTasksLoading(true);
+    }
     try {
       const response = await fetch(`/api/projects/${projectId}/tasks`);
       if (response.ok) {
@@ -98,7 +101,9 @@ export default function TaskBoardPage() {
     } catch (error) {
       showToast.error("Failed to fetch tasks");
     } finally {
-      setTasksLoading(false);
+      if (!silent) {
+        setTasksLoading(false);
+      }
     }
   };
 
@@ -139,8 +144,8 @@ export default function TaskBoardPage() {
 
       if (response.ok) {
         showToast.success("Task created successfully");
-        // Refresh tasks to replace skeleton with actual data
-        await fetchTasks(selectedProjectId);
+        // Refresh tasks to replace skeleton with actual data (silently, no full page loader)
+        await fetchTasks(selectedProjectId, true);
       } else {
         showToast.error("Failed to create task");
         // Remove the skeleton task on failure
@@ -210,10 +215,89 @@ export default function TaskBoardPage() {
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId);
+    e.dataTransfer.effectAllowed = "move";
   };
 
   const handleDragOver = (e: React.DragEvent) => {
     e.preventDefault();
+    e.dataTransfer.dropEffect = "move";
+  };
+
+  const handleDragOverTask = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedOverTask(taskId);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverTask(null);
+  };
+
+  const handleDropOnTask = async (e: React.DragEvent, targetTaskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedOverTask(null);
+
+    const draggedTaskId = e.dataTransfer.getData("taskId");
+    if (!draggedTaskId || draggedTaskId === targetTaskId) return;
+
+    const draggedTask = tasks.find(t => t.id === draggedTaskId);
+    const targetTask = tasks.find(t => t.id === targetTaskId);
+    if (!draggedTask || !targetTask) return;
+
+    // Detect drop position (top half vs bottom half of card)
+    const targetElement = e.currentTarget as HTMLElement;
+    const rect = targetElement.getBoundingClientRect();
+    const mouseY = e.clientY;
+    const cardMiddle = rect.top + rect.height / 2;
+    const insertBefore = mouseY < cardMiddle; // True if dropping on top half
+
+    // Get all tasks in the target status for proper ordering
+    const targetStatus = targetTask.status;
+    const tasksInTargetStatus = tasks.filter(t => t.status === targetStatus && t.id !== draggedTaskId);
+    
+    // Find the insertion index
+    const targetIndexInStatus = tasksInTargetStatus.findIndex(t => t.id === targetTaskId);
+    const insertIndex = insertBefore ? targetIndexInStatus : targetIndexInStatus + 1;
+
+    // Insert the dragged task at the correct position
+    tasksInTargetStatus.splice(insertIndex, 0, { ...draggedTask, status: targetStatus });
+
+    // Recalculate order numbers
+    tasksInTargetStatus.forEach((task, index) => {
+      task.order = index + 1;
+    });
+
+    // Merge back with tasks from other statuses
+    const otherStatusTasks = tasks.filter(t => t.status !== targetStatus && t.id !== draggedTaskId);
+    const updatedTasks = [...otherStatusTasks, ...tasksInTargetStatus].sort((a, b) => {
+      if (a.status !== b.status) {
+        const statusOrder = { 'todo': 0, 'in-progress': 1, 'done': 2 };
+        return (statusOrder[a.status as keyof typeof statusOrder] || 0) - (statusOrder[b.status as keyof typeof statusOrder] || 0);
+      }
+      return a.order - b.order;
+    });
+
+    // Optimistic UI update
+    setTasks(updatedTasks);
+
+    // Update backend
+    try {
+      const updatedTask = tasksInTargetStatus.find(t => t.id === draggedTaskId);
+      if (updatedTask) {
+        await fetch(`/api/tasks/${draggedTaskId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            status: targetStatus,
+            order: updatedTask.order 
+          }),
+        });
+      }
+    } catch (error) {
+      showToast.error("Failed to reorder task");
+      fetchTasks(selectedProjectId, true);
+    }
   };
 
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
@@ -369,7 +453,11 @@ export default function TaskBoardPage() {
               onDeleteTask={openDeleteModal}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
+              onDragOverTask={handleDragOverTask}
+              onDropOnTask={handleDropOnTask}
+              onDragLeave={handleDragLeave}
               onDrop={handleDrop}
+              draggedOverTaskId={draggedOverTask}
             />
           ))}
         </div>

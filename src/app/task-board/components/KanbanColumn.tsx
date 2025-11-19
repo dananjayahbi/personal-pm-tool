@@ -23,7 +23,11 @@ interface KanbanColumnProps {
   onDeleteTask: (task: Task) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
   onDragOver: (e: React.DragEvent) => void;
+  onDragOverTask?: (e: React.DragEvent, taskId: string) => void;
+  onDropOnTask?: (e: React.DragEvent, taskId: string) => void;
+  onDragLeave?: () => void;
   onDrop: (e: React.DragEvent, statusId: string) => void;
+  draggedOverTaskId?: string | null;
 }
 
 export default function KanbanColumn({
@@ -35,7 +39,11 @@ export default function KanbanColumn({
   onDeleteTask,
   onDragStart,
   onDragOver,
+  onDragOverTask,
+  onDropOnTask,
+  onDragLeave,
   onDrop,
+  draggedOverTaskId,
 }: KanbanColumnProps) {
   return (
     <div
@@ -71,6 +79,10 @@ export default function KanbanColumn({
             onEdit={onEditTask}
             onDelete={onDeleteTask}
             onDragStart={onDragStart}
+            onDragOver={onDragOverTask}
+            onDrop={onDropOnTask}
+            onDragLeave={onDragLeave}
+            isDraggedOver={draggedOverTaskId === task.id}
           />
         ))}
       </div>
