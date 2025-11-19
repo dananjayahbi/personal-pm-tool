@@ -1,8 +1,25 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { FileText, ClipboardList, CheckCircle2, TrendingUp } from "lucide-react";
+import FullPageLoader from "@/components/common/FullPageLoader";
 
 export default function DashboardPage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <FullPageLoader />;
+  }
+
   return (
     <div className="space-y-6">
       {/* Welcome Section */}

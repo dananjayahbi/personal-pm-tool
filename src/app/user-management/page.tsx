@@ -1,4 +1,24 @@
+"use client";
+
+import { useState, useEffect } from "react";
+import FullPageLoader from "@/components/common/FullPageLoader";
+
 export default function UserManagementPage() {
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    // Simulate data loading
+    const timer = setTimeout(() => {
+      setLoading(false);
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }, []);
+
+  if (loading) {
+    return <FullPageLoader />;
+  }
+
   return (
     <div className="space-y-6">
       <div>

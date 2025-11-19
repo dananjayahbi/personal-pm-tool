@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import showToast from "@/lib/utils/toast";
+import FullPageLoader from "@/components/common/FullPageLoader";
 import ProjectModal from "./components/ProjectModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import ProjectsTable from "./components/ProjectsTable";
@@ -23,6 +24,7 @@ export default function ProjectsPage() {
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
   const [selectedProject, setSelectedProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -44,6 +46,8 @@ export default function ProjectsPage() {
       }
     } catch (error) {
       showToast.error("Failed to fetch projects");
+    } finally {
+      setPageLoading(false);
     }
   };
 
@@ -164,6 +168,10 @@ export default function ProjectsPage() {
     setIsDeleteModalOpen(false);
     setSelectedProject(null);
   };
+
+  if (pageLoading) {
+    return <FullPageLoader />;
+  }
 
   return (
     <div className="space-y-6">

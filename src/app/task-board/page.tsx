@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import showToast from "@/lib/utils/toast";
+import FullPageLoader from "@/components/common/FullPageLoader";
 import KanbanColumn from "./components/KanbanColumn";
 import TaskModal from "./components/TaskModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
@@ -30,6 +31,7 @@ export default function TaskBoardPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<string>("");
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(false);
+  const [pageLoading, setPageLoading] = useState(true);
 
   // Modal states
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
@@ -72,6 +74,8 @@ export default function TaskBoardPage() {
       }
     } catch (error) {
       showToast.error("Failed to fetch projects");
+    } finally {
+      setPageLoading(false);
     }
   };
 
@@ -246,6 +250,10 @@ export default function TaskBoardPage() {
   const getTasksByStatus = (status: string) => {
     return tasks.filter((task) => task.status === status);
   };
+
+  if (pageLoading) {
+    return <FullPageLoader />;
+  }
 
   if (projects.length === 0) {
     return (
