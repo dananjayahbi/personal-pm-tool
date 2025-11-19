@@ -29,9 +29,16 @@ export default function RoadmapTaskCard({
 }: RoadmapTaskCardProps) {
   if (isTemporary) {
     return (
-      <div className={`roadmap-step ${isEven ? "roadmap-step-right" : "roadmap-step-left"}`}>
-        <div className="roadmap-card roadmap-card-skeleton">
-          <div className="roadmap-card-content">
+      <div className="roadmap-serpentine-task-card">
+        <div className="roadmap-milestone-serpentine">
+          <div className="roadmap-milestone-inner-serpentine">
+            <span className="roadmap-milestone-number-serpentine animate-pulse">
+              {index + 1}
+            </span>
+          </div>
+        </div>
+        <div className="roadmap-card-serpentine roadmap-card-skeleton">
+          <div className="roadmap-card-content-serpentine">
             <div className="h-5 bg-gray-300 rounded w-3/4 animate-pulse mb-3"></div>
             <div className="h-4 bg-gray-300 rounded w-1/2 animate-pulse"></div>
           </div>
@@ -41,26 +48,26 @@ export default function RoadmapTaskCard({
   }
 
   return (
-    <div className={`roadmap-step ${isEven ? "roadmap-step-right" : "roadmap-step-left"}`}>
+    <div className="roadmap-serpentine-task-card">
       {/* Milestone Circle */}
-      <div className="roadmap-milestone">
-        <div className="roadmap-milestone-inner">
-          <span className="roadmap-milestone-number">{index + 1}</span>
+      <div className="roadmap-milestone-serpentine">
+        <div className="roadmap-milestone-inner-serpentine">
+          <span className="roadmap-milestone-number-serpentine">{index + 1}</span>
         </div>
-        <div className="roadmap-pulse"></div>
+        <div className="roadmap-pulse-serpentine"></div>
       </div>
 
       {/* Task Card */}
-      <div className="roadmap-card group">
-        <div className="roadmap-card-content">
-          <h3 className="roadmap-card-title">{task.title}</h3>
+      <div className="roadmap-card-serpentine group">
+        <div className="roadmap-card-content-serpentine">
+          <h3 className="roadmap-card-title-serpentine">{task.title}</h3>
           {task.description && (
-            <p className="roadmap-card-description">{task.description}</p>
+            <p className="roadmap-card-description-serpentine">{task.description}</p>
           )}
         </div>
 
         {/* Action Buttons */}
-        <div className="roadmap-card-actions">
+        <div className="roadmap-card-actions-serpentine">
           <button
             onClick={() => onEdit(task)}
             disabled={loading}
@@ -77,25 +84,6 @@ export default function RoadmapTaskCard({
           >
             <Trash2 className="w-4 h-4" />
           </button>
-        </div>
-
-        {/* Decorative Arrow */}
-        <div className="roadmap-arrow">
-          <svg
-            width="24"
-            height="24"
-            viewBox="0 0 24 24"
-            fill="none"
-            className="roadmap-arrow-icon"
-          >
-            <path
-              d={isEven ? "M15 6l-6 6 6 6" : "M9 6l6 6-6 6"}
-              stroke="currentColor"
-              strokeWidth="2"
-              strokeLinecap="round"
-              strokeLinejoin="round"
-            />
-          </svg>
         </div>
       </div>
     </div>

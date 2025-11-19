@@ -27,14 +27,101 @@ export default function RoadmapGallery({
   loading,
 }: RoadmapGalleryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
 
   // Sort tasks by order
   const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
 
-  // Scroll animation on mount
+  // Calculate position for serpentine layout
+  const getTaskPosition = (index: number) => {
+    const cardsPerRow = 3; // Desktop: 3 cards per row
+    const row = Math.floor(index / cardsPerRow);
+    const col = index % cardsPerRow;
+    
+    // On even rows (0, 2, 4...), go left to right
+    // On odd rows (1, 3, 5...), go right to left (reverse)
+    const isEvenRow = row % 2 === 0;
+    const position = isEvenRow ? col : (cardsPerRow - 1 - col);
+    
+    return { row, col: position, isEvenRow };
+  };
+
+  // Draw curved paths between consecutive tasks
+  useEffect(() => {
+    if (!svgRef.current || sortedTasks.length < 2) return;
+
+    const drawPaths = () => {
+      const svg = svgRef.current;
+      const container = containerRef.current;
+      if (!svg || !container) return;
+
+      const containerRect = container.getBoundingClientRect();
+      
+      sortedTasks.forEach((task, index) => {
+        if (index >= sortedTasks.length - 1) return;
+
+        const currentCard = container.querySelector(`[data-task-id="${task.id}"]`);
+        const nextCard = container.querySelector(`[data-task-id="${sortedTasks[index + 1].id}"]`);
+
+        if (!currentCard || !nextCard) return;
+
+        // Get the milestone circles instead of card centers
+        const currentMilestone = currentCard.querySelector('.roadmap-milestone-inner-serpentine');
+        const nextMilestone = nextCard.querySelector('.roadmap-milestone-inner-serpentine');
+
+        if (!currentMilestone || !nextMilestone) return;
+
+        const currentRect = currentMilestone.getBoundingClientRect();
+        const nextRect = nextMilestone.getBoundingClientRect();
+
+        // Calculate center points of milestones relative to container
+        const x1 = currentRect.left + currentRect.width / 2 - containerRect.left;
+        const y1 = currentRect.top + currentRect.height / 2 - containerRect.top;
+        const x2 = nextRect.left + nextRect.width / 2 - containerRect.left;
+        const y2 = nextRect.top + nextRect.height / 2 - containerRect.top;
+
+        const path = svg.querySelector(`.path-${index}`) as SVGPathElement;
+        if (!path) return;
+
+        // Create smooth S-curve
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Adjust control points based on distance and direction
+        const offset = Math.min(distance * 0.4, 100);
+        
+        const cp1x = x1 + (dx > 0 ? offset : -offset);
+        const cp1y = y1 + offset;
+        const cp2x = x2 + (dx > 0 ? -offset : offset);
+        const cp2y = y2 - offset;
+
+        const pathData = `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
+        path.setAttribute('d', pathData);
+      });
+    };
+
+    // Draw paths after layout
+    setTimeout(drawPaths, 100);
+    setTimeout(drawPaths, 300);
+    
+    window.addEventListener('resize', drawPaths);
+    
+    const resizeObserver = new ResizeObserver(drawPaths);
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      window.removeEventListener('resize', drawPaths);
+      resizeObserver.disconnect();
+    };
+  }, [sortedTasks]);
+
+  // Animate cards on mount
   useEffect(() => {
     if (containerRef.current) {
-      const cards = containerRef.current.querySelectorAll('.roadmap-step');
+      const cards = containerRef.current.querySelectorAll('.roadmap-serpentine-card');
       cards.forEach((card, index) => {
         setTimeout(() => {
           card.classList.add('roadmap-step-visible');
@@ -72,9 +159,9 @@ export default function RoadmapGallery({
   }
 
   return (
-    <div ref={containerRef} className="roadmap-container">
+    <div ref={containerRef} className="roadmap-serpentine-container">
       {/* Start Marker */}
-      <div className="roadmap-start-marker">
+      <div className="roadmap-start-marker-serpentine">
         <div className="roadmap-start-icon">
           <svg
             width="32"
@@ -90,32 +177,64 @@ export default function RoadmapGallery({
         <span className="roadmap-start-text">START</span>
       </div>
 
-      {/* Roadmap Path */}
-      <div className="roadmap-path">
-        <div className="roadmap-path-line"></div>
-
-        {/* Task Cards */}
+      {/* SVG for curved paths */}
+      <svg ref={svgRef} className="roadmap-serpentine-svg">
+        <defs>
+          <linearGradient id="pathGradient" x1="0%" y1="0%" x2="0%" y2="100%">
+            <stop offset="0%" stopColor="#2E6F40" stopOpacity="0.6" />
+            <stop offset="100%" stopColor="#68BA7F" stopOpacity="0.4" />
+          </linearGradient>
+        </defs>
         {sortedTasks.map((task, index) => {
-          const isEven = index % 2 === 0;
+          if (index >= sortedTasks.length - 1) return null;
+          
+          return (
+            <path
+              key={`path-${task.id}`}
+              className={`roadmap-serpentine-path path-${index}`}
+              stroke="url(#pathGradient)"
+              strokeWidth="4"
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray="10,5"
+              d=""
+            />
+          );
+        })}
+      </svg>
+
+      {/* Task Cards in Serpentine Grid */}
+      <div className="roadmap-serpentine-grid">
+        {sortedTasks.map((task, index) => {
           const isTemporary = task.id.startsWith("temp-");
+          const { row, col } = getTaskPosition(index);
 
           return (
-            <RoadmapTaskCard
+            <div
               key={task.id}
-              task={task}
-              index={index}
-              isEven={isEven}
-              onEdit={onEdit}
-              onDelete={onDelete}
-              loading={loading}
-              isTemporary={isTemporary}
-            />
+              className="roadmap-serpentine-card"
+              data-task-id={task.id}
+              style={{
+                gridRow: row + 1,
+                gridColumn: col + 1,
+              }}
+            >
+              <RoadmapTaskCard
+                task={task}
+                index={index}
+                isEven={col === 1}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                loading={loading}
+                isTemporary={isTemporary}
+              />
+            </div>
           );
         })}
       </div>
 
       {/* Finish Marker */}
-      <div className="roadmap-finish-marker">
+      <div className="roadmap-finish-marker-serpentine">
         <div className="roadmap-finish-icon">
           <svg
             width="32"
