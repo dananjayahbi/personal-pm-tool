@@ -1,3 +1,5 @@
+import CustomDropdown from "@/components/ui/CustomDropdown";
+
 interface Project {
   id: string;
   name: string;
@@ -117,17 +119,18 @@ export default function ProjectModal({
             <label className="block text-sm font-medium text-black mb-2">
               Project Status
             </label>
-            <select
+            <CustomDropdown
+              options={[
+                { value: "Active", label: "Active" },
+                { value: "Paused", label: "Paused" },
+                { value: "Draft", label: "Draft" },
+              ]}
               value={formData.status}
-              onChange={(e) =>
-                setFormData({ ...formData, status: e.target.value })
+              onChange={(value) =>
+                setFormData({ ...formData, status: value })
               }
-              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black bg-white"
-            >
-              <option value="Active">Active</option>
-              <option value="Paused">Paused</option>
-              <option value="Draft">Draft</option>
-            </select>
+              placeholder="Select status"
+            />
             <p className="text-xs text-gray-500 mt-1">Active projects appear in Task Board</p>
           </div>
           <div className="flex gap-3 pt-4">
