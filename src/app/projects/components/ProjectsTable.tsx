@@ -1,4 +1,5 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Map } from "lucide-react";
+import { useRouter } from "next/navigation";
 
 interface Project {
   id: string;
@@ -22,6 +23,12 @@ export default function ProjectsTable({
   onEdit,
   onDelete,
 }: ProjectsTableProps) {
+  const router = useRouter();
+
+  const handleRoadmapClick = (projectId: string) => {
+    router.push(`/projects/${projectId}`);
+  };
+
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
       <div className="overflow-x-auto">
@@ -97,6 +104,13 @@ export default function ProjectsTable({
                   </td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => handleRoadmapClick(project.id)}
+                        className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
+                        title="View Roadmap"
+                      >
+                        <Map className="w-4 h-4" />
+                      </button>
                       <button
                         onClick={() => onEdit(project)}
                         className="p-2 text-[#2E6F40] hover:bg-[#CFFFDC] rounded-lg transition-colors"
