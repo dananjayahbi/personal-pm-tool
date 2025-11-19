@@ -25,8 +25,14 @@ export default function ProjectsTable({
 }: ProjectsTableProps) {
   const router = useRouter();
 
-  const handleRoadmapClick = (projectId: string) => {
-    router.push(`/projects/${projectId}`);
+  const handleRoadmapClick = (project: Project) => {
+    // If project is a draft, navigate to drafts-and-planning page
+    if (project.status === "Draft") {
+      router.push(`/drafts-and-planning/${project.id}`);
+    } else {
+      // For active projects, navigate to projects roadmap page
+      router.push(`/projects/${project.id}`);
+    }
   };
 
   return (
@@ -105,7 +111,7 @@ export default function ProjectsTable({
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-center gap-2">
                       <button
-                        onClick={() => handleRoadmapClick(project.id)}
+                        onClick={() => handleRoadmapClick(project)}
                         className="p-2 text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
                         title="View Roadmap"
                       >

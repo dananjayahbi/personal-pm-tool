@@ -82,9 +82,10 @@ export default function ProjectRoadmapPage() {
       const response = await fetch(`/api/projects/${projectId}/tasks`);
       if (response.ok) {
         const data = await response.json();
-        // Filter tasks that belong to this project and are not planning tasks
+        // For active projects, we only want tasks with standard statuses (todo, in-progress, done)
+        // Planning tasks have their own separate interface in drafts-and-planning
         const projectTasks = data.tasks.filter(
-          (task: Task) => task.projectId === projectId && task.status !== "planning"
+          (task: Task) => task.projectId === projectId
         );
         setTasks(projectTasks);
       }
