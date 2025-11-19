@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import FullPageLoader from "@/components/common/FullPageLoader";
+import FullPageLoader from "./components/FullPageLoader";
 
 export default function UserManagementPage() {
   const [loading, setLoading] = useState(true);

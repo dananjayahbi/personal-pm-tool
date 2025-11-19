@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import showToast from "@/lib/utils/toast";
-import KanbanSkeleton from "@/components/common/KanbanSkeleton";
+import KanbanSkeleton from "./components/KanbanSkeleton";
 import KanbanColumn from "./components/KanbanColumn";
 import TaskModal from "./components/TaskModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";

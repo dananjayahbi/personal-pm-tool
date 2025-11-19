@@ -3,7 +3,7 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import showToast from "@/lib/utils/toast";
-import TableSkeleton from "@/components/common/TableSkeleton";
+import TableSkeleton from "./components/TableSkeleton";
 import ProjectModal from "./components/ProjectModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import ProjectsTable from "./components/ProjectsTable";

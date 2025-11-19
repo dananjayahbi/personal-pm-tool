@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { FileText, ClipboardList, CheckCircle2, TrendingUp } from "lucide-react";
-import FullPageLoader from "@/components/common/FullPageLoader";
+import FullPageLoader from "./components/FullPageLoader";
 
 export default function DashboardPage() {
   const [loading, setLoading] = useState(true);
