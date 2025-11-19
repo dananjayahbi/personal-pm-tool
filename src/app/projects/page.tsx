@@ -3,9 +3,9 @@
 import { useState, useEffect } from "react";
 import { Plus } from "lucide-react";
 import showToast from "@/lib/utils/toast";
-import ProjectModal from "@/components/common/ProjectModal";
-import DeleteConfirmModal from "@/components/common/DeleteConfirmModal";
-import ProjectsTable from "@/components/common/ProjectsTable";
+import ProjectModal from "./components/ProjectModal";
+import DeleteConfirmModal from "./components/DeleteConfirmModal";
+import ProjectsTable from "./components/ProjectsTable";
 
 interface Project {
   id: string;
@@ -170,7 +170,7 @@ export default function ProjectsPage() {
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>
-          <h1 className="text-3xl font-bold text-gray-900">Projects</h1>
+          <h1 className="text-3xl font-bold text-black">Projects</h1>
           <p className="text-black mt-2">
             Manage your projects and organize your tasks
           </p>

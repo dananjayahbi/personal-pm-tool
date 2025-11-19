@@ -2,9 +2,9 @@
 
 import { useState, useEffect } from "react";
 import showToast from "@/lib/utils/toast";
-import KanbanColumn from "@/components/common/KanbanColumn";
-import TaskModal from "@/components/common/TaskModal";
-import DeleteConfirmModal from "@/components/common/DeleteConfirmModal";
+import KanbanColumn from "./components/KanbanColumn";
+import TaskModal from "./components/TaskModal";
+import DeleteConfirmModal from "./components/DeleteConfirmModal";
 
 interface Project {
   id: string;
@@ -250,7 +250,7 @@ export default function TaskBoardPage() {
   if (projects.length === 0) {
     return (
       <div className="space-y-6">
-        <h1 className="text-3xl font-bold text-gray-900">Task Board</h1>
+        <h1 className="text-3xl font-bold text-black">Task Board</h1>
         <div className="bg-white rounded-2xl shadow-sm border border-gray-100 p-12 text-center">
           <p className="text-black mb-4">
             No projects found. Create a project first to start managing tasks.

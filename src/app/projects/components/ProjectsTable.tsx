@@ -1,0 +1,96 @@
+import { Pencil, Trash2 } from "lucide-react";
+
+interface Project {
+  id: string;
+  name: string;
+  description: string | null;
+  startDate: string | null;
+  createdAt: string;
+  updatedAt: string;
+}
+
+interface ProjectsTableProps {
+  projects: Project[];
+  onEdit: (project: Project) => void;
+  onDelete: (project: Project) => void;
+}
+
+export default function ProjectsTable({
+  projects,
+  onEdit,
+  onDelete,
+}: ProjectsTableProps) {
+  return (
+    <div className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden">
+      <div className="overflow-x-auto">
+        <table className="w-full">
+          <thead className="bg-gray-50 border-b border-gray-100">
+            <tr>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-black">
+                Project Name
+              </th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-black">
+                Description
+              </th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-black">
+                Start Date
+              </th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-black">
+                Created At
+              </th>
+              <th className="px-6 py-4 text-center text-sm font-semibold text-black">
+                Actions
+              </th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-gray-100">
+            {projects.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-6 py-8 text-center text-black">
+                  No projects yet. Create your first project to get started!
+                </td>
+              </tr>
+            ) : (
+              projects.map((project) => (
+                <tr key={project.id} className="hover:bg-gray-50">
+                  <td className="px-6 py-4 text-sm text-black font-medium">
+                    {project.name}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-black">
+                    {project.description || "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-black">
+                    {project.startDate
+                      ? new Date(project.startDate).toLocaleDateString()
+                      : "-"}
+                  </td>
+                  <td className="px-6 py-4 text-sm text-black">
+                    {new Date(project.createdAt).toLocaleDateString()}
+                  </td>
+                  <td className="px-6 py-4">
+                    <div className="flex items-center justify-center gap-2">
+                      <button
+                        onClick={() => onEdit(project)}
+                        className="p-2 text-[#2E6F40] hover:bg-[#CFFFDC] rounded-lg transition-colors"
+                        title="Edit"
+                      >
+                        <Pencil className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => onDelete(project)}
+                        className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors"
+                        title="Delete"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))
+            )}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+}
