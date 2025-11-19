@@ -281,6 +281,31 @@ export default function ProjectRoadmapPage() {
             <p className="text-black mt-2">
               {project.description || "Manage your project tasks"}
             </p>
+            {/* Completion Stats */}
+            {tasks.length > 0 && (
+              <div className="flex items-center gap-4 mt-3">
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Progress:</span>
+                  <span className="text-sm font-semibold text-[#2E6F40]">
+                    {tasks.filter(t => t.status === 'done').length}/{tasks.length} completed
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-sm text-gray-600">Rate:</span>
+                  <span className="text-sm font-semibold text-[#2E6F40]">
+                    {Math.round((tasks.filter(t => t.status === 'done').length / tasks.length) * 100)}%
+                  </span>
+                </div>
+                <div className="w-48 h-2 bg-gray-200 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-[#2E6F40] rounded-full transition-all duration-500"
+                    style={{
+                      width: `${(tasks.filter(t => t.status === 'done').length / tasks.length) * 100}%`
+                    }}
+                  />
+                </div>
+              </div>
+            )}
           </div>
         </div>
         <button

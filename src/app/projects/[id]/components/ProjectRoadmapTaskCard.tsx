@@ -30,6 +30,29 @@ export default function ProjectRoadmapTaskCard({
   loading,
   isTemporary = false,
 }: ProjectRoadmapTaskCardProps) {
+  // Determine status colors and styles
+  const getStatusStyles = () => {
+    switch (task.status) {
+      case 'done':
+        return {
+          cardBg: '#dcfce7', // green-100
+          borderColor: '#86efac', // green-300
+        };
+      case 'in-progress':
+        return {
+          cardBg: '#dbeafe', // blue-100
+          borderColor: '#93c5fd', // blue-300
+        };
+      default:
+        return {
+          cardBg: '#ffffff',
+          borderColor: '#e5e7eb',
+        };
+    }
+  };
+
+  const statusStyles = getStatusStyles();
+
   if (isTemporary) {
     return (
       <div className="roadmap-serpentine-task-card">
@@ -61,7 +84,14 @@ export default function ProjectRoadmapTaskCard({
       </div>
 
       {/* Task Card */}
-      <div className="roadmap-card-serpentine group">
+      <div
+        className="roadmap-card-serpentine group"
+        style={{
+          backgroundColor: statusStyles.cardBg,
+          borderColor: statusStyles.borderColor,
+          borderWidth: '2px'
+        }}
+      >
         <div className="roadmap-card-content-serpentine">
           <h3 className="roadmap-card-title-serpentine">{task.title}</h3>
         </div>
