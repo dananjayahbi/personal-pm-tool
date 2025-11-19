@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState } from "react";
 import RoadmapTaskCard from "@/components/common/RoadmapTaskCard";
 
 interface PlanningTask {
@@ -28,6 +28,7 @@ export default function RoadmapGallery({
 }: RoadmapGalleryProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const svgRef = useRef<SVGSVGElement>(null);
+  const [selectedTask, setSelectedTask] = useState<PlanningTask | null>(null);
 
   // Sort tasks by order
   const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
@@ -48,7 +49,7 @@ export default function RoadmapGallery({
 
   // Draw curved paths between consecutive tasks
   useEffect(() => {
-    if (!svgRef.current || sortedTasks.length < 2) return;
+    if (!svgRef.current || sortedTasks.length < 1) return;
 
     const drawPaths = () => {
       const svg = svgRef.current;
@@ -57,6 +58,42 @@ export default function RoadmapGallery({
 
       const containerRect = container.getBoundingClientRect();
       
+      // Draw START to first task
+      if (sortedTasks.length > 0) {
+        const startMarker = container.querySelector('.roadmap-start-icon');
+        const firstCard = container.querySelector(`[data-task-id="${sortedTasks[0].id}"]`);
+        
+        if (startMarker && firstCard) {
+          const firstMilestone = firstCard.querySelector('.roadmap-milestone-inner-serpentine');
+          if (firstMilestone) {
+            const startRect = startMarker.getBoundingClientRect();
+            const firstRect = firstMilestone.getBoundingClientRect();
+            
+            const x1 = startRect.left + startRect.width / 2 - containerRect.left;
+            const y1 = startRect.top + startRect.height / 2 - containerRect.top;
+            const x2 = firstRect.left + firstRect.width / 2 - containerRect.left;
+            const y2 = firstRect.top + firstRect.height / 2 - containerRect.top;
+            
+            const path = svg.querySelector('.path-start') as SVGPathElement;
+            if (path) {
+              const dx = x2 - x1;
+              const dy = y2 - y1;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              const offset = Math.min(distance * 0.4, 100);
+              
+              const cp1x = x1 + (dx > 0 ? offset : -offset);
+              const cp1y = y1 + offset;
+              const cp2x = x2 + (dx > 0 ? -offset : offset);
+              const cp2y = y2 - offset;
+              
+              const pathData = `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
+              path.setAttribute('d', pathData);
+            }
+          }
+        }
+      }
+      
+      // Draw paths between tasks
       sortedTasks.forEach((task, index) => {
         if (index >= sortedTasks.length - 1) return;
 
@@ -99,6 +136,41 @@ export default function RoadmapGallery({
         const pathData = `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
         path.setAttribute('d', pathData);
       });
+      
+      // Draw last task to FINISH
+      if (sortedTasks.length > 0) {
+        const lastCard = container.querySelector(`[data-task-id="${sortedTasks[sortedTasks.length - 1].id}"]`);
+        const finishMarker = container.querySelector('.roadmap-finish-icon');
+        
+        if (lastCard && finishMarker) {
+          const lastMilestone = lastCard.querySelector('.roadmap-milestone-inner-serpentine');
+          if (lastMilestone) {
+            const lastRect = lastMilestone.getBoundingClientRect();
+            const finishRect = finishMarker.getBoundingClientRect();
+            
+            const x1 = lastRect.left + lastRect.width / 2 - containerRect.left;
+            const y1 = lastRect.top + lastRect.height / 2 - containerRect.top;
+            const x2 = finishRect.left + finishRect.width / 2 - containerRect.left;
+            const y2 = finishRect.top + finishRect.height / 2 - containerRect.top;
+            
+            const path = svg.querySelector('.path-finish') as SVGPathElement;
+            if (path) {
+              const dx = x2 - x1;
+              const dy = y2 - y1;
+              const distance = Math.sqrt(dx * dx + dy * dy);
+              const offset = Math.min(distance * 0.4, 100);
+              
+              const cp1x = x1 + (dx > 0 ? offset : -offset);
+              const cp1y = y1 + offset;
+              const cp2x = x2 + (dx > 0 ? -offset : offset);
+              const cp2y = y2 - offset;
+              
+              const pathData = `M ${x1},${y1} C ${cp1x},${cp1y} ${cp2x},${cp2y} ${x2},${y2}`;
+              path.setAttribute('d', pathData);
+            }
+          }
+        }
+      }
     };
 
     // Draw paths after layout
@@ -185,6 +257,17 @@ export default function RoadmapGallery({
             <stop offset="100%" stopColor="#68BA7F" stopOpacity="0.4" />
           </linearGradient>
         </defs>
+        {/* START to first task path */}
+        <path
+          className="roadmap-serpentine-path path-start"
+          stroke="url(#pathGradient)"
+          strokeWidth="4"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray="10,5"
+          d=""
+        />
+        {/* Paths between tasks */}
         {sortedTasks.map((task, index) => {
           if (index >= sortedTasks.length - 1) return null;
           
@@ -201,6 +284,16 @@ export default function RoadmapGallery({
             />
           );
         })}
+        {/* Last task to FINISH path */}
+        <path
+          className="roadmap-serpentine-path path-finish"
+          stroke="url(#pathGradient)"
+          strokeWidth="4"
+          fill="none"
+          strokeLinecap="round"
+          strokeDasharray="10,5"
+          d=""
+        />
       </svg>
 
       {/* Task Cards in Serpentine Grid */}
@@ -225,6 +318,7 @@ export default function RoadmapGallery({
                 isEven={col === 1}
                 onEdit={onEdit}
                 onDelete={onDelete}
+                onView={setSelectedTask}
                 loading={loading}
                 isTemporary={isTemporary}
               />
@@ -250,6 +344,70 @@ export default function RoadmapGallery({
         </div>
         <span className="roadmap-finish-text">FINISH</span>
       </div>
+
+      {/* Task Detail Modal */}
+      {selectedTask && (
+        <div className="roadmap-modal-overlay" onClick={() => setSelectedTask(null)}>
+          <div className="roadmap-modal-content" onClick={(e) => e.stopPropagation()}>
+            <button
+              className="roadmap-modal-close"
+              onClick={() => setSelectedTask(null)}
+            >
+              <svg
+                width="24"
+                height="24"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                strokeWidth="2"
+              >
+                <line x1="18" y1="6" x2="6" y2="18" />
+                <line x1="6" y1="6" x2="18" y2="18" />
+              </svg>
+            </button>
+            <div className="roadmap-modal-header">
+              <div className="roadmap-modal-icon">
+                <svg
+                  width="32"
+                  height="32"
+                  viewBox="0 0 24 24"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                >
+                  <path d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2" />
+                  <path d="M9 12h6m-6 4h6" />
+                </svg>
+              </div>
+              <h2 className="roadmap-modal-title">{selectedTask.title}</h2>
+            </div>
+            <div className="roadmap-modal-body">
+              {selectedTask.description ? (
+                <div className="roadmap-modal-description">
+                  <div className="roadmap-modal-description-label">Description</div>
+                  <p className="roadmap-modal-description-text">{selectedTask.description}</p>
+                </div>
+              ) : (
+                <div className="roadmap-modal-no-description">
+                  <svg
+                    width="48"
+                    height="48"
+                    viewBox="0 0 24 24"
+                    fill="none"
+                    stroke="currentColor"
+                    strokeWidth="1.5"
+                  >
+                    <circle cx="12" cy="12" r="10" />
+                    <line x1="12" y1="16" x2="12" y2="12" />
+                    <line x1="12" y1="8" x2="12.01" y2="8" />
+                  </svg>
+                  <p>No description available for this task</p>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -75,6 +75,8 @@ body {
   margin-bottom: 3rem;
   padding-left: 1rem;
   animation: fadeInDown 0.6s ease-out;
+  position: relative;
+  z-index: 100;
 }
 
 .roadmap-start-icon {
@@ -87,8 +89,9 @@ body {
   justify-content: center;
   color: white;
   box-shadow: 0 10px 25px rgba(46, 111, 64, 0.3);
-  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
   flex-shrink: 0;
+  position: relative;
+  z-index: 100;
 }
 
 .roadmap-start-text {
@@ -108,6 +111,8 @@ body {
   margin-top: 3rem;
   padding-right: 1rem;
   animation: fadeInUp 0.6s ease-out;
+  position: relative;
+  z-index: 100;
 }
 
 .roadmap-finish-icon {
@@ -120,9 +125,10 @@ body {
   justify-content: center;
   color: white;
   box-shadow: 0 10px 25px rgba(46, 111, 64, 0.3);
-  animation: bounce 2s infinite;
   flex-shrink: 0;
   order: 2;
+  position: relative;
+  z-index: 100;
 }
 
 .roadmap-finish-text {
@@ -526,5 +532,193 @@ body {
   .roadmap-start-text,
   .roadmap-finish-text {
     font-size: 1.1rem;
+  }
+}
+
+/* =====================================================
+   ROADMAP MODAL STYLING
+   ===================================================== */
+
+.roadmap-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.6);
+  backdrop-filter: blur(8px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9999;
+  padding: 1rem;
+  animation: fadeIn 0.3s ease-out;
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+  to {
+    opacity: 1;
+  }
+}
+
+.roadmap-modal-content {
+  background: white;
+  border-radius: 1.5rem;
+  max-width: 600px;
+  width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.25);
+  position: relative;
+  animation: slideUp 0.3s ease-out;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(30px) scale(0.95);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+.roadmap-modal-close {
+  position: absolute;
+  top: 1.5rem;
+  right: 1.5rem;
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  background: #f3f4f6;
+  border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  color: #6b7280;
+  z-index: 10;
+}
+
+.roadmap-modal-close:hover {
+  background: #ef4444;
+  color: white;
+  transform: rotate(90deg);
+}
+
+.roadmap-modal-header {
+  padding: 2.5rem 2rem 1.5rem 2rem;
+  border-bottom: 2px solid #f3f4f6;
+  display: flex;
+  align-items: flex-start;
+  gap: 1.25rem;
+}
+
+.roadmap-modal-icon {
+  width: 60px;
+  height: 60px;
+  background: linear-gradient(135deg, #2E6F40 0%, #68BA7F 100%);
+  border-radius: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: white;
+  flex-shrink: 0;
+  box-shadow: 0 10px 25px rgba(46, 111, 64, 0.3);
+}
+
+.roadmap-modal-title {
+  font-size: 1.75rem;
+  font-weight: 800;
+  color: #111827;
+  line-height: 1.3;
+  margin: 0;
+  padding-top: 0.5rem;
+  flex: 1;
+}
+
+.roadmap-modal-body {
+  padding: 2rem;
+}
+
+.roadmap-modal-description {
+  background: linear-gradient(135deg, rgba(46, 111, 64, 0.05) 0%, rgba(104, 186, 127, 0.05) 100%);
+  border-radius: 1rem;
+  padding: 1.75rem;
+  border-left: 4px solid #2E6F40;
+}
+
+.roadmap-modal-description-label {
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.1em;
+  color: #2E6F40;
+  margin-bottom: 0.75rem;
+}
+
+.roadmap-modal-description-text {
+  font-size: 1.05rem;
+  line-height: 1.7;
+  color: #374151;
+  margin: 0;
+  white-space: pre-wrap;
+}
+
+.roadmap-modal-no-description {
+  text-align: center;
+  padding: 3rem 2rem;
+  color: #9ca3af;
+}
+
+.roadmap-modal-no-description svg {
+  margin: 0 auto 1rem auto;
+  opacity: 0.5;
+}
+
+.roadmap-modal-no-description p {
+  font-size: 1rem;
+  margin: 0;
+}
+
+/* Responsive Modal */
+@media (max-width: 640px) {
+  .roadmap-modal-content {
+    max-width: 100%;
+    margin: 0.5rem;
+    border-radius: 1rem;
+  }
+
+  .roadmap-modal-header {
+    padding: 2rem 1.5rem 1.25rem 1.5rem;
+    flex-direction: column;
+    align-items: center;
+    text-align: center;
+  }
+
+  .roadmap-modal-icon {
+    width: 50px;
+    height: 50px;
+  }
+
+  .roadmap-modal-title {
+    font-size: 1.4rem;
+    padding-top: 0;
+  }
+
+  .roadmap-modal-body {
+    padding: 1.5rem;
+  }
+
+  .roadmap-modal-close {
+    top: 1rem;
+    right: 1rem;
+    width: 36px;
+    height: 36px;
   }
 }

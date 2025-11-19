@@ -1,4 +1,4 @@
-import { Pencil, Trash2 } from "lucide-react";
+import { Pencil, Trash2, Eye } from "lucide-react";
 
 interface PlanningTask {
   id: string;
@@ -14,6 +14,7 @@ interface RoadmapTaskCardProps {
   isEven: boolean;
   onEdit: (task: PlanningTask) => void;
   onDelete: (task: PlanningTask) => void;
+  onView: (task: PlanningTask) => void;
   loading: boolean;
   isTemporary?: boolean;
 }
@@ -24,6 +25,7 @@ export default function RoadmapTaskCard({
   isEven,
   onEdit,
   onDelete,
+  onView,
   loading,
   isTemporary = false,
 }: RoadmapTaskCardProps) {
@@ -61,13 +63,18 @@ export default function RoadmapTaskCard({
       <div className="roadmap-card-serpentine group">
         <div className="roadmap-card-content-serpentine">
           <h3 className="roadmap-card-title-serpentine">{task.title}</h3>
-          {task.description && (
-            <p className="roadmap-card-description-serpentine">{task.description}</p>
-          )}
         </div>
 
         {/* Action Buttons */}
         <div className="roadmap-card-actions-serpentine">
+          <button
+            onClick={() => onView(task)}
+            disabled={loading}
+            className="roadmap-btn roadmap-btn-view"
+            title="View Task Details"
+          >
+            <Eye className="w-4 h-4" />
+          </button>
           <button
             onClick={() => onEdit(task)}
             disabled={loading}
