@@ -12,6 +12,7 @@ interface Project {
   id: string;
   name: string;
   color: string;
+  status: string;
 }
 
 interface Task {
@@ -70,9 +71,13 @@ export default function TaskBoardPage() {
       const response = await fetch("/api/projects");
       if (response.ok) {
         const data = await response.json();
-        setProjects(data.projects);
-        if (data.projects.length > 0 && !selectedProjectId) {
-          setSelectedProjectId(data.projects[0].id);
+        // Filter to show only Active projects
+        const activeProjects = data.projects.filter(
+          (project: Project) => project.status === "Active"
+        );
+        setProjects(activeProjects);
+        if (activeProjects.length > 0 && !selectedProjectId) {
+          setSelectedProjectId(activeProjects[0].id);
         }
       }
     } catch (error) {

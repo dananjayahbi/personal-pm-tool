@@ -6,6 +6,7 @@ interface Project {
   description: string | null;
   startDate: string | null;
   color: string;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -37,6 +38,9 @@ export default function ProjectsTable({
                 Description
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-black">
+                Status
+              </th>
+              <th className="px-6 py-4 text-left text-sm font-semibold text-black">
                 Start Date
               </th>
               <th className="px-6 py-4 text-left text-sm font-semibold text-black">
@@ -50,7 +54,7 @@ export default function ProjectsTable({
           <tbody className="divide-y divide-gray-100">
             {projects.length === 0 ? (
               <tr>
-                <td colSpan={6} className="px-6 py-8 text-center text-black">
+                <td colSpan={7} className="px-6 py-8 text-center text-black">
                   No projects yet. Create your first project to get started!
                 </td>
               </tr>
@@ -69,6 +73,19 @@ export default function ProjectsTable({
                   </td>
                   <td className="px-6 py-4 text-sm text-black">
                     {project.description || "-"}
+                  </td>
+                  <td className="px-6 py-4">
+                    <span
+                      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                        project.status === "Active"
+                          ? "bg-green-100 text-green-800"
+                          : project.status === "Paused"
+                          ? "bg-orange-100 text-orange-800"
+                          : "bg-gray-100 text-gray-800"
+                      }`}
+                    >
+                      {project.status}
+                    </span>
                   </td>
                   <td className="px-6 py-4 text-sm text-black">
                     {project.startDate

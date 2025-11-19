@@ -4,6 +4,7 @@ interface Project {
   description: string | null;
   startDate: string | null;
   color: string;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -13,6 +14,7 @@ interface ProjectFormData {
   description: string;
   startDate: string;
   color: string;
+  status: string;
 }
 
 interface ProjectModalProps {
@@ -110,6 +112,23 @@ export default function ProjectModal({
               />
             </div>
             <p className="text-xs text-gray-500 mt-1">Choose a color to identify your project</p>
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-black mb-2">
+              Project Status
+            </label>
+            <select
+              value={formData.status}
+              onChange={(e) =>
+                setFormData({ ...formData, status: e.target.value })
+              }
+              className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black bg-white"
+            >
+              <option value="Active">Active</option>
+              <option value="Paused">Paused</option>
+              <option value="Draft">Draft</option>
+            </select>
+            <p className="text-xs text-gray-500 mt-1">Active projects appear in Task Board</p>
           </div>
           <div className="flex gap-3 pt-4">
             <button

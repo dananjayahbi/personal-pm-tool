@@ -51,6 +51,7 @@ model Project {
   description String?
   startDate   DateTime?
   color       String   @default("#5B4FCF") // Project color for UI
+  status      String   @default("Active") // Draft, Paused, Active
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   

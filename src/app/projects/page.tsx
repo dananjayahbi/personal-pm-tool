@@ -14,6 +14,7 @@ interface Project {
   description: string | null;
   startDate: string | null;
   color: string;
+  status: string;
   createdAt: string;
   updatedAt: string;
 }
@@ -33,6 +34,7 @@ export default function ProjectsPage() {
     description: "",
     startDate: "",
     color: "#5B4FCF",
+    status: "Active",
   });
 
   useEffect(() => {
@@ -71,7 +73,7 @@ export default function ProjectsPage() {
       if (response.ok) {
         showToast.success("Project created successfully");
         setIsAddModalOpen(false);
-        setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
+        setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF", status: "Active" });
         fetchProjects();
       } else {
         showToast.error("Failed to create project");
@@ -102,7 +104,7 @@ export default function ProjectsPage() {
         showToast.success("Project updated successfully");
         setIsEditModalOpen(false);
         setSelectedProject(null);
-        setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
+        setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF", status: "Active" });
         fetchProjects();
       } else {
         showToast.error("Failed to update project");
@@ -147,6 +149,7 @@ export default function ProjectsPage() {
         ? new Date(project.startDate).toISOString().split("T")[0]
         : "",
       color: project.color || "#5B4FCF",
+      status: project.status || "Active",
     });
     setIsEditModalOpen(true);
   };
@@ -158,13 +161,13 @@ export default function ProjectsPage() {
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
+    setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF", status: "Active" });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedProject(null);
-    setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF" });
+    setFormData({ name: "", description: "", startDate: "", color: "#5B4FCF", status: "Active" });
   };
 
   const closeDeleteModal = () => {
