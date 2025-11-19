@@ -1,4 +1,7 @@
-import { Pencil, Trash2 } from "lucide-react";
+"use client";
+
+import { useEffect, useRef } from "react";
+import HexagonTaskCard from "@/components/common/HexagonTaskCard";
 
 interface PlanningTask {
   id: string;
@@ -16,32 +19,6 @@ interface PlanningCardGalleryProps {
   loading: boolean;
 }
 
-function PlanningSkeletonCard() {
-  return (
-    <div className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
-      <div className="p-6 bg-linear-to-b from-gray-100 to-white">
-        {/* Order Badge Skeleton */}
-        <div className="flex items-start justify-between mb-3">
-          <div className="w-8 h-8 rounded-full bg-gray-200 animate-pulse"></div>
-        </div>
-
-        {/* Title Skeleton */}
-        <div className="space-y-2 mb-3">
-          <div className="h-6 bg-gray-200 rounded animate-pulse w-3/4"></div>
-          <div className="h-6 bg-gray-200 rounded animate-pulse w-1/2"></div>
-        </div>
-
-        {/* Description Skeleton */}
-        <div className="space-y-2">
-          <div className="h-4 bg-gray-200 rounded animate-pulse"></div>
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-5/6"></div>
-          <div className="h-4 bg-gray-200 rounded animate-pulse w-4/6"></div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 export default function PlanningCardGallery({
   tasks,
   projectColor,
@@ -49,13 +26,105 @@ export default function PlanningCardGallery({
   onDelete,
   loading,
 }: PlanningCardGalleryProps) {
-  // Convert hex to rgba for background
-  const hexToRgba = (hex: string, alpha: number) => {
-    const r = parseInt(hex.slice(1, 3), 16);
-    const g = parseInt(hex.slice(3, 5), 16);
-    const b = parseInt(hex.slice(5, 7), 16);
-    return `rgba(${r}, ${g}, ${b}, ${alpha})`;
-  };
+  const containerRef = useRef<HTMLDivElement>(null);
+  const svgRef = useRef<SVGSVGElement>(null);
+
+  // Function to draw curved connector lines between ALL consecutive tasks
+  useEffect(() => {
+    if (!containerRef.current || !svgRef.current || tasks.length < 2) return;
+
+    const drawConnectors = () => {
+      const container = containerRef.current;
+      const svg = svgRef.current;
+      if (!container || !svg) return;
+
+      const items = container.querySelectorAll('.planning-hex-grid-item');
+      if (items.length < 2) return;
+
+      const containerRect = container.getBoundingClientRect();
+
+      items.forEach((item, index) => {
+        if (index === items.length - 1) return;
+
+        const currentCard = item.querySelector('.hex-card-wrapper');
+        const nextItem = items[index + 1];
+        const nextCard = nextItem?.querySelector('.hex-card-wrapper');
+
+        if (!currentCard || !nextCard) return;
+
+        const currentRect = currentCard.getBoundingClientRect();
+        const nextRect = nextCard.getBoundingClientRect();
+
+        // Calculate center points relative to container
+        const x1 = currentRect.left + currentRect.width / 2 - containerRect.left;
+        const y1 = currentRect.top + currentRect.height / 2 - containerRect.top;
+        const x2 = nextRect.left + nextRect.width / 2 - containerRect.left;
+        const y2 = nextRect.top + nextRect.height / 2 - containerRect.top;
+
+        // Calculate direction and distance
+        const dx = x2 - x1;
+        const dy = y2 - y1;
+        const distance = Math.sqrt(dx * dx + dy * dy);
+        
+        // Determine if it's a horizontal or cross-row connection
+        const isHorizontal = Math.abs(dy) < 50; // Same row
+        const isCrossRow = dy > 50; // Going to next row
+        
+        let pathData;
+        
+        if (isHorizontal) {
+          // Horizontal connection (same row) - gentle arc
+          const midX = (x1 + x2) / 2;
+          const midY = y1 - 30; // Arc upward
+          pathData = `M ${x1} ${y1} Q ${midX} ${midY}, ${x2} ${y2}`;
+        } else if (isCrossRow) {
+          // Cross-row connection - S-curve
+          const cp1x = x1 + dx * 0.5;
+          const cp1y = y1 + dy * 0.2;
+          const cp2x = x2 - dx * 0.5;
+          const cp2y = y2 - dy * 0.2;
+          pathData = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
+        } else {
+          // Default smooth curve
+          const cp1x = x1 + dx * 0.4;
+          const cp1y = y1 + dy * 0.1;
+          const cp2x = x2 - dx * 0.4;
+          const cp2y = y2 - dy * 0.1;
+          pathData = `M ${x1} ${y1} C ${cp1x} ${cp1y}, ${cp2x} ${cp2y}, ${x2} ${y2}`;
+        }
+
+        const path = svg.querySelector(`.connector-${index}`) as SVGPathElement;
+        if (path) {
+          path.setAttribute('d', pathData);
+        }
+      });
+    };
+
+    // Initial draw with delay to ensure layout is ready
+    const timeoutId = setTimeout(drawConnectors, 100);
+
+    // Redraw on window resize
+    const handleResize = () => {
+      drawConnectors();
+    };
+
+    window.addEventListener('resize', handleResize);
+    
+    // Use ResizeObserver for better responsiveness
+    const resizeObserver = new ResizeObserver(() => {
+      requestAnimationFrame(drawConnectors);
+    });
+    
+    if (containerRef.current) {
+      resizeObserver.observe(containerRef.current);
+    }
+
+    return () => {
+      clearTimeout(timeoutId);
+      window.removeEventListener('resize', handleResize);
+      resizeObserver.disconnect();
+    };
+  }, [tasks]);
 
   if (tasks.length === 0) {
     return (
@@ -89,73 +158,56 @@ export default function PlanningCardGallery({
   const sortedTasks = [...tasks].sort((a, b) => a.order - b.order);
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-      {sortedTasks.map((task, index) => {
-        // Check if it's a temporary task (skeleton)
-        const isTemporary = task.id.startsWith("temp-");
+    <div ref={containerRef} className="planning-hexagon-gallery-container">
+      {/* SVG for connector lines */}
+      <svg ref={svgRef} className="connector-svg" xmlns="http://www.w3.org/2000/svg">
+        <defs>
+          <linearGradient id="connectorGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+            <stop offset="0%" stopColor="#d1d5db" />
+            <stop offset="50%" stopColor="#9ca3af" />
+            <stop offset="100%" stopColor="#d1d5db" />
+          </linearGradient>
+        </defs>
+        {sortedTasks.map((task, index) => {
+          if (index === sortedTasks.length - 1) return null;
+          
+          return (
+            <path
+              key={`connector-${task.id}`}
+              className={`connector-path connector-${index}`}
+              stroke="url(#connectorGradient)"
+              strokeWidth="3"
+              fill="none"
+              strokeLinecap="round"
+              strokeDasharray="8,4"
+            />
+          );
+        })}
+      </svg>
 
-        if (isTemporary) {
-          return <PlanningSkeletonCard key={task.id} />;
-        }
+      {/* Grid of hexagon cards */}
+      <div className="planning-hexagon-grid">
+        {sortedTasks.map((task, index) => {
+          const isTemporary = task.id.startsWith("temp-");
 
-        return (
-          <div
-            key={task.id}
-            className="bg-white rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-200 overflow-hidden group"
-            style={{
-              borderLeftWidth: "4px",
-              borderLeftColor: projectColor,
-            }}
-          >
+          return (
             <div
-              className="p-6"
-              style={{
-                background: `linear-gradient(to bottom, ${hexToRgba(projectColor, 0.05)}, white)`,
-              }}
+              key={task.id}
+              className="planning-hex-grid-item"
+              data-index={index}
             >
-              {/* Order Badge */}
-              <div className="flex items-start justify-between mb-3">
-                <div
-                  className="flex items-center justify-center w-8 h-8 rounded-full text-white text-sm font-bold"
-                  style={{ backgroundColor: projectColor }}
-                >
-                  {index + 1}
-                </div>
-                <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                  <button
-                    onClick={() => onEdit(task)}
-                    disabled={loading}
-                    className="p-2 text-[#2E6F40] hover:bg-[#CFFFDC] rounded-lg transition-colors disabled:opacity-50"
-                    title="Edit"
-                  >
-                    <Pencil className="w-4 h-4" />
-                  </button>
-                  <button
-                    onClick={() => onDelete(task)}
-                    disabled={loading}
-                    className="p-2 text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
-                    title="Delete"
-                  >
-                    <Trash2 className="w-4 h-4" />
-                  </button>
-                </div>
-              </div>
-
-              {/* Task Title */}
-              <h3 className="text-lg font-semibold text-black mb-2 line-clamp-2">
-                {task.title}
-              </h3>
-
-              {/* Task Description */}
-              {task.description && (
-                <p className="text-sm text-gray-600 line-clamp-3">
-                  {task.description}
-                </p>
-              )}
+              <HexagonTaskCard
+                task={task}
+                index={index}
+                onEdit={onEdit}
+                onDelete={onDelete}
+                loading={loading}
+                isTemporary={isTemporary}
+              />
             </div>
-          </div>
-        );
-      })}
+          );
+        })}
+      </div>
     </div>
   );
 }
