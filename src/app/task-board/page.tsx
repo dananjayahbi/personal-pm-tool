@@ -109,29 +109,47 @@ export default function TaskBoardPage() {
       return;
     }
 
-    setLoading(true);
+    // Create a temporary task ID for the skeleton
+    const tempId = `temp-${Date.now()}`;
+    const tempTask: Task = {
+      id: tempId,
+      title: formData.title,
+      description: formData.description,
+      status: selectedStatus,
+      order: tasks.filter(t => t.status === selectedStatus).length + 1,
+      projectId: selectedProjectId,
+    };
+
+    // Optimistic UI: Add skeleton task immediately and close modal
+    setTasks((prevTasks) => [...prevTasks, tempTask]);
+    setIsAddModalOpen(false);
+    setFormData({ title: "", description: "" });
+
+    // Add to database in background
     try {
       const response = await fetch(`/api/projects/${selectedProjectId}/tasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...formData,
+          title: tempTask.title,
+          description: tempTask.description,
           status: selectedStatus,
         }),
       });
 
       if (response.ok) {
         showToast.success("Task created successfully");
-        setIsAddModalOpen(false);
-        setFormData({ title: "", description: "" });
-        fetchTasks(selectedProjectId);
+        // Refresh tasks to replace skeleton with actual data
+        await fetchTasks(selectedProjectId);
       } else {
         showToast.error("Failed to create task");
+        // Remove the skeleton task on failure
+        setTasks((prevTasks) => prevTasks.filter((t) => t.id !== tempId));
       }
     } catch (error) {
       showToast.error("An error occurred");
-    } finally {
-      setLoading(false);
+      // Remove the skeleton task on error
+      setTasks((prevTasks) => prevTasks.filter((t) => t.id !== tempId));
     }
   };
 

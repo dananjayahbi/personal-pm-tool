@@ -24,6 +24,9 @@ export default function TaskCard({
   onDelete,
   onDragStart,
 }: TaskCardProps) {
+  // Check if this is a temporary task (skeleton)
+  const isTemporary = task.id.startsWith("temp-");
+
   // Convert hex color to RGB and apply opacity
   const hexToRgba = (hex: string, opacity: number) => {
     const result = /^#?([a-f\d]{2})([a-f\d]{2})([a-f\d]{2})$/i.exec(hex);
@@ -34,6 +37,22 @@ export default function TaskCard({
       parseInt(result[3], 16)}, ${
       opacity})`;
   };
+
+  if (isTemporary) {
+    return (
+      <div
+        className="rounded-lg p-3 border border-gray-200 bg-gray-50 animate-pulse"
+      >
+        <div className="flex items-start gap-2">
+          <div className="w-4 h-4 bg-gray-300 rounded mt-0.5 shrink-0" />
+          <div className="flex-1 min-w-0 space-y-2">
+            <div className="h-5 bg-gray-300 rounded w-3/4" />
+            <div className="h-4 bg-gray-300 rounded w-1/2" />
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div
