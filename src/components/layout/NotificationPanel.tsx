@@ -1,8 +1,9 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { Bell, X, Check, CheckCheck } from "lucide-react";
+import { Bell, X, Check, CheckCheck, Trash2, XCircle } from "lucide-react";
 import { useRouter } from "next/navigation";
+import showToast from "@/lib/utils/toast";
 
 interface Notification {
   id: string;
@@ -52,15 +53,54 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
   };
 
   const markAsRead = async (notificationId: string) => {
-    try {
-      await fetch(`/api/notifications/${notificationId}`, {
-        method: "PATCH",
-      });
+    // Optimistic update - update UI first
+    if (filter === "unread") {
+      // In unread tab, remove the notification from the list immediately
+      setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    } else {
+      // In all tab, just mark as read
       setNotifications((prev) =>
         prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
       );
+    }
+
+    // Then call API in background
+    try {
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: true }),
+      });
     } catch (error) {
       console.error("Error marking notification as read:", error);
+      // Revert on error - refetch to restore correct state
+      fetchNotifications();
+      showToast.error("Failed to mark as read");
+    }
+  };
+
+  const markAsUnread = async (notificationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Optimistic update - update UI first
+    setNotifications((prev) =>
+      prev.map((n) => (n.id === notificationId ? { ...n, isRead: false } : n))
+    );
+
+    // Then call API in background
+    try {
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ isRead: false }),
+      });
+    } catch (error) {
+      console.error("Error marking notification as unread:", error);
+      // Revert on error
+      setNotifications((prev) =>
+        prev.map((n) => (n.id === notificationId ? { ...n, isRead: true } : n))
+      );
+      showToast.error("Failed to mark as unread");
     }
   };
 
@@ -70,8 +110,46 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
         method: "PATCH",
       });
       setNotifications((prev) => prev.map((n) => ({ ...n, isRead: true })));
+      showToast.success("All notifications marked as read");
     } catch (error) {
       console.error("Error marking all as read:", error);
+      showToast.error("Failed to mark all as read");
+    }
+  };
+
+  const deleteNotification = async (notificationId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    
+    // Optimistic update - update UI first (instant feedback)
+    setNotifications((prev) => prev.filter((n) => n.id !== notificationId));
+    
+    // Then call API in background
+    try {
+      await fetch(`/api/notifications/${notificationId}`, {
+        method: "DELETE",
+      });
+      showToast.success("Notification deleted");
+    } catch (error) {
+      console.error("Error deleting notification:", error);
+      showToast.error("Failed to delete notification");
+      // Optionally refetch notifications on error
+      fetchNotifications();
+    }
+  };
+
+  const clearAllNotifications = async () => {
+    if (!confirm("Are you sure you want to clear all notifications?")) {
+      return;
+    }
+    try {
+      await fetch("/api/notifications", {
+        method: "DELETE",
+      });
+      setNotifications([]);
+      showToast.success("All notifications cleared");
+    } catch (error) {
+      console.error("Error clearing all notifications:", error);
+      showToast.error("Failed to clear all notifications");
     }
   };
 
@@ -141,7 +219,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
             </h2>
             <button
               onClick={onClose}
-              className="text-white hover:bg-white hover:bg-opacity-20 rounded-full p-1 transition-all"
+              className="text-white hover:bg-white hover:text-black hover:bg-opacity-20 rounded-full p-1 transition-all"
             >
               <X className="w-6 h-6" />
             </button>
@@ -154,7 +232,7 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 filter === "unread"
                   ? "bg-white text-[#2E6F40]"
-                  : "bg-white bg-opacity-20 text-white hover:bg-opacity-30"
+                  : "bg-white bg-opacity-20 text-[#2E6F40] hover:text-black hover:bg-opacity-30"
               }`}
             >
               Unread
@@ -163,8 +241,8 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
               onClick={() => setFilter("all")}
               className={`px-4 py-1.5 rounded-full text-sm font-medium transition-all ${
                 filter === "all"
-                  ? "bg-white text-[#2E6F40]"
-                  : "bg-white bg-opacity-20 text-white hover:bg-opacity-30"
+                  ? "bg-white text-[#2E6F40] hover:text-black"
+                  : "bg-white bg-opacity-20 text-[#2E6F40] hover:text-black hover:bg-opacity-30"
               }`}
             >
               All
@@ -173,14 +251,23 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
         </div>
 
         {/* Actions */}
-        {notifications.length > 0 && notifications.some((n) => !n.isRead) && (
-          <div className="p-3 border-b border-gray-100">
+        {notifications.length > 0 && (
+          <div className="p-3 border-b border-gray-100 flex items-center justify-between">
+            {notifications.some((n) => !n.isRead) && (
+              <button
+                onClick={markAllAsRead}
+                className="text-sm text-[#2E6F40] hover:text-[#68BA7F] font-medium flex items-center gap-1 transition-colors"
+              >
+                <CheckCheck className="w-4 h-4" />
+                Mark all as read
+              </button>
+            )}
             <button
-              onClick={markAllAsRead}
-              className="text-sm text-[#2E6F40] hover:text-[#68BA7F] font-medium flex items-center gap-1 transition-colors"
+              onClick={clearAllNotifications}
+              className="text-sm text-red-600 hover:text-red-700 font-medium flex items-center gap-1 transition-colors ml-auto"
             >
-              <CheckCheck className="w-4 h-4" />
-              Mark all as read
+              <XCircle className="w-4 h-4" />
+              Clear all
             </button>
           </div>
         )}
@@ -234,8 +321,8 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
                       </p>
                     </div>
 
-                    {/* Mark as Read Button */}
-                    {!notification.isRead && (
+                    {/* Mark as Read/Unread Button */}
+                    {!notification.isRead ? (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
@@ -246,7 +333,24 @@ export default function NotificationPanel({ isOpen, onClose }: NotificationPanel
                       >
                         <Check className="w-4 h-4" />
                       </button>
+                    ) : (
+                      <button
+                        onClick={(e) => markAsUnread(notification.id, e)}
+                        className="flex-shrink-0 text-gray-400 hover:text-blue-600 transition-colors p-1"
+                        title="Mark as unread"
+                      >
+                        <Bell className="w-4 h-4" />
+                      </button>
                     )}
+
+                    {/* Delete Button */}
+                    <button
+                      onClick={(e) => deleteNotification(notification.id, e)}
+                      className="flex-shrink-0 text-gray-400 hover:text-red-600 transition-colors p-1"
+                      title="Delete notification"
+                    >
+                      <Trash2 className="w-4 h-4" />
+                    </button>
                   </div>
                 </div>
               ))}

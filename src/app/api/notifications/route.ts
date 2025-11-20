@@ -52,3 +52,23 @@ export async function PATCH(request: NextRequest) {
     );
   }
 }
+
+// DELETE /api/notifications - Delete all notifications
+export async function DELETE(request: NextRequest) {
+  try {
+    const user = await verifyAuth(request);
+    if (!user) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await notificationService.deleteAllNotifications(user.id);
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting all notifications:", error);
+    return NextResponse.json(
+      { error: "Failed to delete all notifications" },
+      { status: 500 }
+    );
+  }
+}

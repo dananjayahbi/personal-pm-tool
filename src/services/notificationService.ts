@@ -77,6 +77,19 @@ export const notificationService = {
     });
   },
 
+  // Mark notification as unread
+  async markAsUnread(notificationId: string, userId: string) {
+    return await prisma.notification.updateMany({
+      where: {
+        id: notificationId,
+        userId, // Ensure user owns this notification
+      },
+      data: {
+        isRead: false,
+      },
+    });
+  },
+
   // Mark all notifications as read
   async markAllAsRead(userId: string) {
     return await prisma.notification.updateMany({
@@ -102,6 +115,25 @@ export const notificationService = {
         createdAt: {
           lt: cutoffDate,
         },
+      },
+    });
+  },
+
+  // Delete a single notification
+  async deleteNotification(notificationId: string, userId: string) {
+    return await prisma.notification.deleteMany({
+      where: {
+        id: notificationId,
+        userId, // Ensure user owns this notification
+      },
+    });
+  },
+
+  // Delete all notifications for a user
+  async deleteAllNotifications(userId: string) {
+    return await prisma.notification.deleteMany({
+      where: {
+        userId,
       },
     });
   },
