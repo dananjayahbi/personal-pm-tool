@@ -34,6 +34,7 @@ export default function UniversalKanbanPage() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [draggedOverTask, setDraggedOverTask] = useState<string | null>(null);
 
   // Modal states
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
@@ -96,7 +97,8 @@ export default function UniversalKanbanPage() {
     setIsDeleteModalOpen(true);
   };
 
-  const handleUpdateTask = async () => {
+  const handleUpdateTask = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!selectedTask) return;
 
     if (!formData.title.trim()) {
@@ -147,20 +149,115 @@ export default function UniversalKanbanPage() {
 
   const handleDragStart = (e: React.DragEvent, taskId: string) => {
     e.dataTransfer.setData("taskId", taskId);
+    e.dataTransfer.effectAllowed = "move";
     const task = tasks.find((t) => t.id === taskId);
     if (task) {
       e.dataTransfer.setData("currentStatus", task.status);
     }
   };
 
+  const handleDragOverTask = (e: React.DragEvent, taskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    e.dataTransfer.dropEffect = "move";
+    setDraggedOverTask(taskId);
+  };
+
+  const handleDragLeave = () => {
+    setDraggedOverTask(null);
+  };
+
+  const handleDropOnTask = async (e: React.DragEvent, targetTaskId: string) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDraggedOverTask(null);
+
+    const draggedTaskId = e.dataTransfer.getData("taskId");
+    if (!draggedTaskId || draggedTaskId === targetTaskId) return;
+
+    const draggedTask = tasks.find(t => t.id === draggedTaskId);
+    const targetTask = tasks.find(t => t.id === targetTaskId);
+    if (!draggedTask || !targetTask) return;
+
+    // Detect drop position (top half vs bottom half of card)
+    const targetElement = e.currentTarget as HTMLElement;
+    const rect = targetElement.getBoundingClientRect();
+    const mouseY = e.clientY;
+    const cardMiddle = rect.top + rect.height / 2;
+    const insertBefore = mouseY < cardMiddle;
+
+    // Get all tasks in the target status for proper ordering
+    const targetStatus = targetTask.status;
+    const tasksInTargetStatus = tasks.filter(t => t.status === targetStatus && t.id !== draggedTaskId);
+    
+    // Find the insertion index
+    const targetIndexInStatus = tasksInTargetStatus.findIndex(t => t.id === targetTaskId);
+    const insertIndex = insertBefore ? targetIndexInStatus : targetIndexInStatus + 1;
+
+    // Insert the dragged task at the correct position
+    tasksInTargetStatus.splice(insertIndex, 0, { ...draggedTask, status: targetStatus });
+
+    // Recalculate order numbers
+    tasksInTargetStatus.forEach((task, index) => {
+      task.order = index + 1;
+    });
+
+    // Merge back with tasks from other statuses
+    const otherStatusTasks = tasks.filter(t => t.status !== targetStatus && t.id !== draggedTaskId);
+    const updatedTasks = [...otherStatusTasks, ...tasksInTargetStatus].sort((a, b) => {
+      if (a.status !== b.status) {
+        const statusOrder = { 'todo': 0, 'in-progress': 1, 'done': 2 };
+        return (statusOrder[a.status as keyof typeof statusOrder] || 0) - (statusOrder[b.status as keyof typeof statusOrder] || 0);
+      }
+      return a.order - b.order;
+    });
+
+    // Optimistic UI update
+    setTasks(updatedTasks);
+
+    // Update backend
+    try {
+      const updatedTask = tasksInTargetStatus.find(t => t.id === draggedTaskId);
+      if (updatedTask) {
+        await fetch(`/api/tasks/${draggedTaskId}`, {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ 
+            status: targetStatus,
+            order: updatedTask.order 
+          }),
+        });
+      }
+    } catch (error) {
+      showToast.error("Failed to reorder task");
+      fetchTodaysTasks(true);
+    }
+  };
+
   const handleDrop = async (e: React.DragEvent, newStatus: string) => {
     e.preventDefault();
+    setDraggedOverTask(null);
 
     const taskId = e.dataTransfer.getData("taskId");
     const currentStatus = e.dataTransfer.getData("currentStatus");
 
     if (currentStatus === newStatus) return;
 
+    // Find the task being moved
+    const taskToUpdate = tasks.find((task) => task.id === taskId);
+    if (!taskToUpdate) return;
+
+    // Store the old status for potential rollback
+    const oldStatus = taskToUpdate.status;
+
+    // Optimistic UI update
+    setTasks((prevTasks) =>
+      prevTasks.map((task) =>
+        task.id === taskId ? { ...task, status: newStatus } : task
+      )
+    );
+
+    // Update database in background
     try {
       const response = await fetch(`/api/tasks/${taskId}`, {
         method: "PATCH",
@@ -170,13 +267,22 @@ export default function UniversalKanbanPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
-      if (response.ok) {
-        fetchTodaysTasks(true);
-        showToast.success("Task status updated");
-      } else {
+      if (!response.ok) {
+        // Rollback on failure
+        setTasks((prevTasks) =>
+          prevTasks.map((task) =>
+            task.id === taskId ? { ...task, status: oldStatus } : task
+          )
+        );
         showToast.error("Failed to update task status");
       }
     } catch (error) {
+      // Rollback on error
+      setTasks((prevTasks) =>
+        prevTasks.map((task) =>
+          task.id === taskId ? { ...task, status: oldStatus } : task
+        )
+      );
       showToast.error("An error occurred while updating task status");
     }
   };
@@ -253,17 +359,23 @@ export default function UniversalKanbanPage() {
               {/* Tasks */}
               <div className="space-y-3 min-h-[400px]">
                 {statusTasks.map((task) => (
-                  <div key={task.id} className="relative">
+                  <div
+                    key={task.id}
+                    className="relative"
+                    onDragOver={(e) => handleDragOverTask(e, task.id)}
+                    onDragLeave={handleDragLeave}
+                    onDrop={(e) => handleDropOnTask(e, task.id)}
+                  >
                     <TaskCard
                       task={task}
                       projectColor={task.project.color}
                       onEdit={() => handleEditTask(task)}
                       onDelete={() => handleDeleteClick(task)}
                       onDragStart={(e) => handleDragStart(e, task.id)}
-                      isDraggedOver={false}
+                      isDraggedOver={draggedOverTask === task.id}
                     />
                     {/* Project Badge */}
-                    <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm border border-gray-200">
+                    <div className="absolute top-2 right-2 flex items-center gap-1.5 bg-white/90 backdrop-blur-sm px-2 py-1 rounded-full shadow-sm border border-gray-200 pointer-events-none">
                       <div
                         className="w-2 h-2 rounded-full"
                         style={{ backgroundColor: task.project.color }}
@@ -298,6 +410,9 @@ export default function UniversalKanbanPage() {
         onSubmit={handleUpdateTask}
         formData={formData}
         setFormData={setFormData}
+        loading={false}
+        title="Edit Task"
+        submitText="Update Task"
       />
 
       {/* Delete Confirmation Modal */}
@@ -305,7 +420,10 @@ export default function UniversalKanbanPage() {
         isOpen={isDeleteModalOpen}
         onClose={() => setIsDeleteModalOpen(false)}
         onConfirm={handleDeleteTask}
-        itemName={selectedTask?.title || ""}
+        loading={false}
+        title="Delete Task"
+        message={`Are you sure you want to delete "${selectedTask?.title}"? This action cannot be undone.`}
+        confirmText="Delete"
       />
     </div>
   );
