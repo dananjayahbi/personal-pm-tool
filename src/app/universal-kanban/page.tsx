@@ -5,6 +5,7 @@ import showToast from "@/lib/utils/toast";
 import TaskCard from "@/app/task-board/components/TaskCard";
 import TaskModal from "@/app/task-board/components/TaskModal";
 import DeleteConfirmModal from "@/app/task-board/components/DeleteConfirmModal";
+import KanbanSkeleton from "@/app/task-board/components/KanbanSkeleton";
 import { Calendar, RefreshCw } from "lucide-react";
 
 interface Task {
@@ -302,8 +303,22 @@ export default function UniversalKanbanPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-full">
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-[#2E6F40]"></div>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex items-center justify-between">
+          <div>
+            <div className="flex items-center gap-3">
+              <h1 className="text-3xl font-bold text-black">Today's Tasks</h1>
+            </div>
+            <div className="flex items-center gap-2 mt-2 text-gray-600">
+              <Calendar className="w-4 h-4" />
+              <p className="text-sm">{getTodayDate()}</p>
+            </div>
+            <p className="text-sm text-gray-500 mt-1">Loading today's tasks...</p>
+          </div>
+        </div>
+        {/* Skeleton Loader */}
+        <KanbanSkeleton />
       </div>
     );
   }
