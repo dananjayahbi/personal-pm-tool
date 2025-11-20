@@ -22,11 +22,15 @@ interface PlanningTask {
   description: string | null;
   order: number;
   projectId: string;
+  dueDate: string | null;
+  dueTime: string | null;
 }
 
 interface PlanningTaskFormData {
   title: string;
   description: string;
+  dueDate: string;
+  dueTime: string;
 }
 
 export default function ProjectPlanningPage() {
@@ -49,6 +53,8 @@ export default function ProjectPlanningPage() {
   const [formData, setFormData] = useState<PlanningTaskFormData>({
     title: "",
     description: "",
+    dueDate: "",
+    dueTime: "",
   });
 
   useEffect(() => {
@@ -107,12 +113,14 @@ export default function ProjectPlanningPage() {
       description: formData.description,
       order: tasks.length + 1,
       projectId,
+      dueDate: formData.dueDate || null,
+      dueTime: formData.dueTime || null,
     };
 
     // Optimistic UI: Add skeleton card immediately and close modal
     setTasks((prevTasks) => [...prevTasks, tempTask]);
     setIsAddModalOpen(false);
-    setFormData({ title: "", description: "" });
+    setFormData({ title: "", description: "", dueDate: "", dueTime: "" });
 
     // Add to database in background
     try {
@@ -122,6 +130,8 @@ export default function ProjectPlanningPage() {
         body: JSON.stringify({
           ...formData,
           status: "todo",
+          dueDate: formData.dueDate || null,
+          dueTime: formData.dueTime || null,
         }),
       });
 
@@ -162,7 +172,7 @@ export default function ProjectPlanningPage() {
         showToast.success("Planning task updated successfully");
         setIsEditModalOpen(false);
         setSelectedTask(null);
-        setFormData({ title: "", description: "" });
+        setFormData({ title: "", description: "", dueDate: "", dueTime: "" });
         fetchPlanningTasks();
       } else {
         showToast.error("Failed to update planning task");
@@ -213,19 +223,21 @@ export default function ProjectPlanningPage() {
     setFormData({
       title: task.title,
       description: task.description || "",
+      dueDate: task.dueDate ? task.dueDate.split('T')[0] : "",
+      dueTime: task.dueTime || "",
     });
     setIsEditModalOpen(true);
   };
 
   const closeAddModal = () => {
     setIsAddModalOpen(false);
-    setFormData({ title: "", description: "" });
+    setFormData({ title: "", description: "", dueDate: "", dueTime: "" });
   };
 
   const closeEditModal = () => {
     setIsEditModalOpen(false);
     setSelectedTask(null);
-    setFormData({ title: "", description: "" });
+    setFormData({ title: "", description: "", dueDate: "", dueTime: "" });
   };
 
   if (pageLoading) {

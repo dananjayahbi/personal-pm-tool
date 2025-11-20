@@ -61,7 +61,7 @@ export async function POST(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { title, description, status } = await request.json();
+    const { title, description, status, dueDate, dueTime } = await request.json();
 
     if (!title || title.trim() === "") {
       return NextResponse.json(
@@ -85,6 +85,8 @@ export async function POST(
         description: description?.trim() || null,
         status: status || "todo",
         projectId: id,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        dueTime: dueTime || null,
       },
     });
 

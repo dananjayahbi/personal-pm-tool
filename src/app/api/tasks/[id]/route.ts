@@ -24,7 +24,7 @@ export async function PUT(
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const { title, description } = await request.json();
+    const { title, description, dueDate, dueTime } = await request.json();
 
     if (!title || title.trim() === "") {
       return NextResponse.json(
@@ -38,6 +38,8 @@ export async function PUT(
       data: {
         title: title.trim(),
         description: description?.trim() || null,
+        dueDate: dueDate ? new Date(dueDate) : null,
+        dueTime: dueTime || null,
       },
     });
 

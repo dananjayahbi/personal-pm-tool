@@ -1,6 +1,8 @@
 interface TaskFormData {
   title: string;
   description: string;
+  dueDate: string;
+  dueTime: string;
 }
 
 interface TaskModalProps {
@@ -59,6 +61,34 @@ export default function TaskModal({
               placeholder="Enter task description"
               rows={3}
             />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div>
+              <label className="block text-sm font-medium text-black mb-2">
+                Due Date
+              </label>
+              <input
+                type="date"
+                value={formData.dueDate}
+                onChange={(e) =>
+                  setFormData({ ...formData, dueDate: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black"
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-black mb-2">
+                Due Time
+              </label>
+              <input
+                type="time"
+                value={formData.dueTime}
+                onChange={(e) =>
+                  setFormData({ ...formData, dueTime: e.target.value })
+                }
+                className="w-full px-4 py-2 border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#2E6F40] text-black"
+              />
+            </div>
           </div>
           <div className="flex gap-3 pt-4">
             <button

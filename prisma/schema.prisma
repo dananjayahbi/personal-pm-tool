@@ -65,16 +65,18 @@ model Project {
 }
 
 model Task {
-  id          String   @id @default(cuid())
+  id          String    @id @default(cuid())
   title       String
   description String?
-  status      String   @default("todo") // todo, in-progress, done
-  order       Int      @default(0)
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
+  status      String    @default("todo") // todo, in-progress, done
+  order       Int       @default(0)
+  dueDate     DateTime?
+  dueTime     String?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
   
   projectId   String
-  project     Project  @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project     Project   @relation(fields: [projectId], references: [id], onDelete: Cascade)
   
   @@map("tasks")
 }
