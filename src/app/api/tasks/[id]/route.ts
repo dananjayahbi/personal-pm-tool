@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { cookies } from "next/headers";
 import { prisma } from "@/lib/prisma";
+import { notificationService } from "@/services/notificationService";
 
 export async function PUT(
   request: Request,
@@ -81,6 +82,13 @@ export async function PATCH(
       where: { id },
       data: { status },
     });
+
+    // Check if task was completed and notify
+    if (status === "done") {
+      await notificationService.notifyTaskCompleted(id);
+      // Check if project is now completed
+      await notificationService.checkProjectCompletion(task.projectId);
+    }
 
     return NextResponse.json({ task });
   } catch (error) {

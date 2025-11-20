@@ -1,5 +1,6 @@
 import bcrypt from "bcryptjs";
 import { prisma } from "./prisma";
+import { NextRequest } from "next/server";
 
 export async function hashPassword(password: string): Promise<string> {
   return bcrypt.hash(password, 12);
@@ -52,4 +53,12 @@ function generateToken(): string {
     Math.random().toString(36).substring(2, 15) +
     Date.now().toString(36)
   );
+}
+
+export async function verifyAuth(request: NextRequest) {
+  const token = request.cookies.get("session")?.value;
+  if (!token) return null;
+
+  const user = await validateSession(token);
+  return user;
 }
