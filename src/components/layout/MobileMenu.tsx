@@ -4,7 +4,7 @@ import { useState } from "react";
 import Link from "next/link";
 import { useRouter, usePathname } from "next/navigation";
 import showToast from "@/lib/utils/toast";
-import { LayoutGrid, Home, Users, Settings, X, LogOut, FolderKanban, Kanban } from "lucide-react";
+import { LayoutGrid, Home, Users, Settings, X, LogOut, FolderKanban, Kanban, Calendar, FileEdit } from "lucide-react";
 
 interface MobileMenuProps {
   isOpen: boolean;
@@ -19,6 +19,8 @@ export default function MobileMenu({ isOpen, onClose }: MobileMenuProps) {
     { name: "Dashboard", icon: Home, href: "/dashboard" },
     { name: "Projects", icon: FolderKanban, href: "/projects" },
     { name: "Task Board", icon: Kanban, href: "/task-board" },
+    { name: "Universal Kanban", icon: Calendar, href: "/universal-kanban" },
+    { name: "Drafts and Planning", icon: FileEdit, href: "/drafts-and-planning" },
     { name: "User Management", icon: Users, href: "/user-management" },
     { name: "Settings", icon: Settings, href: "/settings" },
   ];

@@ -12,7 +12,8 @@ import {
   User,
   FolderKanban,
   Kanban,
-  FileEdit
+  FileEdit,
+  Calendar
 } from "lucide-react";
 
 interface NavItem {
@@ -57,6 +58,11 @@ export default function SideNav() {
       name: "Task Board",
       href: "/task-board",
       icon: <Kanban className="w-6 h-6" />,
+    },
+    {
+      name: "Universal Kanban",
+      href: "/universal-kanban",
+      icon: <Calendar className="w-6 h-6" />,
     },
     {
       name: "Drafts and Planning",
