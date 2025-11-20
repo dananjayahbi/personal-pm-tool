@@ -84,7 +84,26 @@ model Task {
   // Notifications related to this task
   notifications Notification[]
   
+  // Subtasks for this task
+  subTasks    SubTask[]
+  
   @@map("tasks")
+}
+
+model SubTask {
+  id          String   @id @default(cuid())
+  title       String
+  description String?
+  isCompleted Boolean  @default(false)
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  taskId      String
+  task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
+  
+  @@map("subtasks")
+  @@index([taskId])
 }
 
 model Notification {

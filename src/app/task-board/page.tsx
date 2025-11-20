@@ -7,6 +7,7 @@ import KanbanColumn from "./components/KanbanColumn";
 import TaskModal from "./components/TaskModal";
 import DeleteConfirmModal from "./components/DeleteConfirmModal";
 import ProjectDropdown from "./components/ProjectDropdown";
+import SubTasksModal from "./components/SubTasksModal";
 
 interface Project {
   id: string;
@@ -46,6 +47,7 @@ export default function TaskBoardPage() {
   const [isAddModalOpen, setIsAddModalOpen] = useState(false);
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [isDeleteModalOpen, setIsDeleteModalOpen] = useState(false);
+  const [isSubTasksModalOpen, setIsSubTasksModalOpen] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [selectedStatus, setSelectedStatus] = useState<string>("todo");
 
@@ -372,6 +374,20 @@ export default function TaskBoardPage() {
     setIsDeleteModalOpen(true);
   };
 
+  const openSubTasksModal = (task: Task) => {
+    setSelectedTask(task);
+    setIsSubTasksModalOpen(true);
+  };
+
+  const closeSubTasksModal = () => {
+    setIsSubTasksModalOpen(false);
+    // Refresh tasks to update subtask counts
+    if (selectedProjectId) {
+      fetchTasks(selectedProjectId, true);
+    }
+    setSelectedTask(null);
+  };
+
   const openAddModal = (status: string) => {
     setSelectedStatus(status);
     setIsAddModalOpen(true);
@@ -463,6 +479,7 @@ export default function TaskBoardPage() {
               onAddTask={openAddModal}
               onEditTask={openEditModal}
               onDeleteTask={openDeleteModal}
+              onViewSubTasks={openSubTasksModal}
               onDragStart={handleDragStart}
               onDragOver={handleDragOver}
               onDragOverTask={handleDragOverTask}
@@ -508,6 +525,14 @@ export default function TaskBoardPage() {
         title="Delete Task"
         message={`Are you sure you want to delete "${selectedTask?.title}"? This action cannot be undone.`}
         confirmText="Delete"
+      />
+
+      {/* SubTasks Modal */}
+      <SubTasksModal
+        isOpen={isSubTasksModalOpen}
+        onClose={closeSubTasksModal}
+        taskId={selectedTask?.id || ""}
+        taskTitle={selectedTask?.title || ""}
       />
     </div>
   );

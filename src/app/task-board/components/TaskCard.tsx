@@ -1,4 +1,4 @@
-import { Pencil, Trash2, GripVertical } from "lucide-react";
+import { Pencil, Trash2, GripVertical, ListTodo } from "lucide-react";
 
 interface Task {
   id: string;
@@ -7,6 +7,10 @@ interface Task {
   status: string;
   order: number;
   projectId: string;
+  _count?: {
+    subTasks: number;
+  };
+  subTasksCompleted?: number;
 }
 
 interface TaskCardProps {
@@ -14,6 +18,7 @@ interface TaskCardProps {
   projectColor: string;
   onEdit: (task: Task) => void;
   onDelete: (task: Task) => void;
+  onViewSubTasks?: (task: Task) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
   onDragOver?: (e: React.DragEvent, taskId: string) => void;
   onDrop?: (e: React.DragEvent, taskId: string) => void;
@@ -26,6 +31,7 @@ export default function TaskCard({
   projectColor,
   onEdit,
   onDelete,
+  onViewSubTasks,
   onDragStart,
   onDragOver,
   onDrop,
@@ -34,6 +40,10 @@ export default function TaskCard({
 }: TaskCardProps) {
   // Check if this is a temporary task (skeleton)
   const isTemporary = task.id.startsWith('temp-');
+
+  const hasSubTasks = (task._count?.subTasks || 0) > 0;
+  const subTasksTotal = task._count?.subTasks || 0;
+  const subTasksCompleted = task.subTasksCompleted || 0;
 
   // Handle drag over with position detection
   const handleDragOverInternal = (e: React.DragEvent) => {
@@ -97,9 +107,35 @@ export default function TaskCard({
               {task.description}
             </p>
           )}
+          {/* Subtask Counter */}
+          {hasSubTasks && (
+            <div className="flex items-center gap-1.5 mt-2">
+              <ListTodo className="w-3.5 h-3.5 text-gray-500" />
+              <span className="text-xs font-medium text-gray-600">
+                {subTasksCompleted}/{subTasksTotal}
+              </span>
+              <div className="flex-1 h-1.5 bg-gray-200 rounded-full overflow-hidden ml-1">
+                <div
+                  className="h-full bg-[#2E6F40] transition-all"
+                  style={{
+                    width: `${subTasksTotal > 0 ? (subTasksCompleted / subTasksTotal) * 100 : 0}%`,
+                  }}
+                />
+              </div>
+            </div>
+          )}
         </div>
       </div>
       <div className="flex items-center justify-end gap-1 mt-2">
+        {onViewSubTasks && (
+          <button
+            onClick={() => onViewSubTasks(task)}
+            className="p-1.5 text-blue-600 hover:bg-blue-50 rounded transition-colors"
+            title="View Subtasks"
+          >
+            <ListTodo className="w-3.5 h-3.5" />
+          </button>
+        )}
         <button
           onClick={() => onEdit(task)}
           className="p-1.5 text-[#2E6F40] hover:bg-[#CFFFDC] rounded transition-colors"

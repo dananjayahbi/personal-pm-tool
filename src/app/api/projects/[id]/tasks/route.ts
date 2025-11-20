@@ -26,10 +26,29 @@ export async function GET(
 
     const tasks = await prisma.task.findMany({
       where: { projectId: id },
+      include: {
+        _count: {
+          select: {
+            subTasks: true,
+          },
+        },
+        subTasks: {
+          select: {
+            isCompleted: true,
+          },
+        },
+      },
       orderBy: { order: "asc" },
     });
 
-    return NextResponse.json({ tasks });
+    // Add completed subtask count to each task
+    const tasksWithSubTaskCounts = tasks.map((task) => ({
+      ...task,
+      subTasksCompleted: task.subTasks.filter((st) => st.isCompleted).length,
+      subTasks: undefined, // Remove full subtasks array to keep response clean
+    }));
+
+    return NextResponse.json({ tasks: tasksWithSubTaskCounts });
   } catch (error) {
     console.error("Error fetching tasks:", error);
     return NextResponse.json(

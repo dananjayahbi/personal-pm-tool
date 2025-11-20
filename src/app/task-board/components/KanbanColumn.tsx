@@ -21,6 +21,7 @@ interface KanbanColumnProps {
   onAddTask: (statusId: string) => void;
   onEditTask: (task: Task) => void;
   onDeleteTask: (task: Task) => void;
+  onViewSubTasks?: (task: Task) => void;
   onDragStart: (e: React.DragEvent, taskId: string) => void;
   onDragOver: (e: React.DragEvent) => void;
   onDragOverTask?: (e: React.DragEvent, taskId: string) => void;
@@ -37,6 +38,7 @@ export default function KanbanColumn({
   onAddTask,
   onEditTask,
   onDeleteTask,
+  onViewSubTasks,
   onDragStart,
   onDragOver,
   onDragOverTask,
@@ -78,6 +80,7 @@ export default function KanbanColumn({
             projectColor={projectColor}
             onEdit={onEditTask}
             onDelete={onDeleteTask}
+            onViewSubTasks={onViewSubTasks}
             onDragStart={onDragStart}
             onDragOver={onDragOverTask}
             onDrop={onDropOnTask}
