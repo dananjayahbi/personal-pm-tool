@@ -1,8 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { X, Plus, Check, Trash2, Edit2, GripVertical } from "lucide-react";
-import showToast from "@/lib/utils/toast";
+import { X, Plus, Trash2, GripVertical, Check, Edit2 } from "lucide-react";
+import { showToast } from "@/lib/utils/toast";
 
 interface SubTask {
   id: string;
@@ -31,6 +31,8 @@ export default function SubTasksModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newSubTaskTitle, setNewSubTaskTitle] = useState("");
   const [newSubTaskDescription, setNewSubTaskDescription] = useState("");
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
   const [draggedSubTaskId, setDraggedSubTaskId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -62,26 +64,50 @@ export default function SubTasksModal({
       return;
     }
 
+    // Create temporary subtask for optimistic UI
+    const tempId = `temp-${Date.now()}`;
+    const tempSubTask: SubTask = {
+      id: tempId,
+      title: newSubTaskTitle.trim(),
+      description: newSubTaskDescription.trim() || null,
+      isCompleted: false,
+      order: subTasks.length + 1,
+    };
+
+    // Optimistic UI: Add skeleton subtask immediately
+    setSubTasks((prev) => [...prev, tempSubTask]);
+    const titleValue = newSubTaskTitle.trim();
+    const descValue = newSubTaskDescription.trim();
+    setNewSubTaskTitle("");
+    setNewSubTaskDescription("");
+    setAdding(false);
+
+    // Add to database in background
     try {
       const response = await fetch(`/api/tasks/${taskId}/subtasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: newSubTaskTitle.trim(),
-          description: newSubTaskDescription.trim() || null,
+          title: titleValue,
+          description: descValue || null,
         }),
       });
 
       if (response.ok) {
+        const data = await response.json();
+        // Replace temp subtask with real data from API
+        setSubTasks((prev) =>
+          prev.map((st) => (st.id === tempId ? data.subTask : st))
+        );
         showToast.success("Subtask added");
-        setNewSubTaskTitle("");
-        setNewSubTaskDescription("");
-        setAdding(false);
-        fetchSubTasks();
       } else {
+        // Remove skeleton on failure
+        setSubTasks((prev) => prev.filter((st) => st.id !== tempId));
         showToast.error("Failed to add subtask");
       }
     } catch (error) {
+      // Remove skeleton on error
+      setSubTasks((prev) => prev.filter((st) => st.id !== tempId));
       showToast.error("Failed to add subtask");
     }
   };
@@ -140,6 +166,64 @@ export default function SubTasksModal({
     } catch (error) {
       setSubTasks(oldSubTasks);
       showToast.error("Failed to delete subtask");
+    }
+  };
+
+  const handleEditClick = (subtask: SubTask) => {
+    setEditingId(subtask.id);
+    setEditTitle(subtask.title);
+    setEditDescription(subtask.description || "");
+  };
+
+  const handleCancelEdit = () => {
+    setEditingId(null);
+    setEditTitle("");
+    setEditDescription("");
+  };
+
+  const handleSaveEdit = async (subtaskId: string) => {
+    if (!editTitle.trim()) {
+      showToast.error("Subtask title is required");
+      return;
+    }
+
+    // Optimistic UI: Update in list immediately
+    const previousSubTasks = [...subTasks];
+    setSubTasks((prev) =>
+      prev.map((st) =>
+        st.id === subtaskId
+          ? { ...st, title: editTitle.trim(), description: editDescription.trim() || null }
+          : st
+      )
+    );
+
+    const titleValue = editTitle.trim();
+    const descValue = editDescription.trim();
+    setEditingId(null);
+    setEditTitle("");
+    setEditDescription("");
+
+    try {
+      const response = await fetch(`/api/subtasks/${subtaskId}`, {
+        method: "PUT",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          title: titleValue,
+          description: descValue || null,
+        }),
+      });
+
+      if (response.ok) {
+        showToast.success("Subtask updated");
+      } else {
+        // Rollback on failure
+        setSubTasks(previousSubTasks);
+        showToast.error("Failed to update subtask");
+      }
+    } catch (error) {
+      // Rollback on error
+      setSubTasks(previousSubTasks);
+      showToast.error("Failed to update subtask");
     }
   };
 
@@ -247,49 +331,115 @@ export default function SubTasksModal({
                 {subTasks.map((subTask) => (
                   <div
                     key={subTask.id}
-                    draggable
+                    draggable={editingId !== subTask.id}
                     onDragStart={(e) => handleDragStart(e, subTask.id)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, subTask.id)}
-                    className={`flex items-start gap-3 p-4 bg-gray-50 rounded-xl border-2 transition-all cursor-move ${
-                      draggedSubTaskId === subTask.id
-                        ? "border-[#2E6F40] opacity-50"
-                        : "border-transparent hover:border-gray-200"
+                    className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
+                      subTask.id.startsWith("temp-")
+                        ? "bg-gray-100 border-gray-300 animate-pulse"
+                        : editingId === subTask.id
+                        ? "bg-blue-50 border-blue-200"
+                        : `bg-gray-50 ${
+                            draggedSubTaskId === subTask.id
+                              ? "border-[#2E6F40] opacity-50 cursor-move"
+                              : "border-transparent hover:border-gray-200 cursor-move"
+                          }`
                     }`}
                   >
-                    <GripVertical className="w-5 h-5 text-gray-400 mt-0.5 flex-shrink-0" />
-                    <button
-                      onClick={() => handleToggleComplete(subTask.id, subTask.isCompleted)}
-                      className={`w-5 h-5 rounded border-2 flex items-center justify-center flex-shrink-0 mt-0.5 transition-all ${
-                        subTask.isCompleted
-                          ? "bg-[#2E6F40] border-[#2E6F40]"
-                          : "border-gray-300 hover:border-[#2E6F40]"
-                      }`}
-                    >
-                      {subTask.isCompleted && <Check className="w-3 h-3 text-white" />}
-                    </button>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`font-medium ${
+                    {editingId !== subTask.id && (
+                      <GripVertical className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
+                    )}
+                    {editingId !== subTask.id && (
+                      <button
+                        onClick={() => handleToggleComplete(subTask.id, subTask.isCompleted)}
+                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
                           subTask.isCompleted
-                            ? "text-gray-400 line-through"
-                            : "text-gray-900"
+                            ? "bg-[#2E6F40] border-[#2E6F40]"
+                            : "border-gray-300 hover:border-[#2E6F40]"
                         }`}
                       >
-                        {subTask.title}
-                      </p>
-                      {subTask.description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {subTask.description}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => handleDeleteSubTask(subTask.id)}
-                      className="text-red-500 hover:text-red-600 transition-colors flex-shrink-0"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+                        {subTask.isCompleted && <Check className="w-3 h-3 text-white" />}
+                      </button>
+                    )}
+
+                    {editingId === subTask.id ? (
+                      // Edit Mode
+                      <div className="flex-1 space-y-2">
+                        <input
+                          type="text"
+                          value={editTitle}
+                          onChange={(e) => setEditTitle(e.target.value)}
+                          onKeyDown={(e) => {
+                            if (e.key === "Enter") {
+                              handleSaveEdit(subTask.id);
+                            } else if (e.key === "Escape") {
+                              handleCancelEdit();
+                            }
+                          }}
+                          placeholder="Subtask title *"
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
+                          autoFocus
+                        />
+                        <textarea
+                          value={editDescription}
+                          onChange={(e) => setEditDescription(e.target.value)}
+                          placeholder="Description (optional)"
+                          rows={2}
+                          className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
+                        />
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleSaveEdit(subTask.id)}
+                            className="px-4 py-2 bg-[#2E6F40] text-white rounded-lg hover:bg-[#68BA7F] transition-colors text-sm font-medium"
+                          >
+                            Save
+                          </button>
+                          <button
+                            onClick={handleCancelEdit}
+                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
+                          >
+                            Cancel
+                          </button>
+                        </div>
+                      </div>
+                    ) : (
+                      // View Mode
+                      <>
+                        <div className="flex-1 min-w-0">
+                          <p
+                            className={`font-medium ${
+                              subTask.isCompleted
+                                ? "text-gray-400 line-through"
+                                : "text-gray-900"
+                            }`}
+                          >
+                            {subTask.title}
+                          </p>
+                          {subTask.description && (
+                            <p className="text-sm text-gray-600 mt-1">
+                              {subTask.description}
+                            </p>
+                          )}
+                        </div>
+                        <div className="flex gap-1 shrink-0">
+                          <button
+                            onClick={() => handleEditClick(subTask)}
+                            className="text-blue-500 hover:text-blue-600 transition-colors p-1"
+                            title="Edit subtask"
+                          >
+                            <Edit2 className="w-4 h-4" />
+                          </button>
+                          <button
+                            onClick={() => handleDeleteSubTask(subTask.id)}
+                            className="text-red-500 hover:text-red-600 transition-colors p-1"
+                            title="Delete subtask"
+                          >
+                            <Trash2 className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </>
+                    )}
                   </div>
                 ))}
 
