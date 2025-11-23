@@ -1,7 +1,7 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { X, Plus, Trash2, GripVertical, Check, Edit2 } from "lucide-react";
+import { useState, useEffect, useRef } from "react";
+import { X, Plus, Trash2, GripVertical, Check, Edit2, ExternalLink } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 
 interface SubTask {
@@ -34,6 +34,7 @@ export default function SubTasksModal({
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
   const [draggedSubTaskId, setDraggedSubTaskId] = useState<string | null>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isOpen && taskId) {
@@ -311,16 +312,27 @@ export default function SubTasksModal({
                 </div>
               </div>
             </div>
-            <button
-              onClick={onClose}
-              className="text-gray-400 hover:text-gray-600 transition-colors ml-4"
-            >
-              <X className="w-6 h-6" />
-            </button>
+            <div className="flex gap-2 ml-4">
+              <button
+                onClick={() => {
+                  window.open(`/task-board/subtasks/${taskId}`, "_blank");
+                }}
+                className="text-gray-400 hover:text-[#2E6F40] transition-colors"
+                title="Open in new tab"
+              >
+                <ExternalLink className="w-6 h-6" />
+              </button>
+              <button
+                onClick={onClose}
+                className="text-gray-400 hover:text-gray-600 transition-colors"
+              >
+                <X className="w-6 h-6" />
+              </button>
+            </div>
           </div>
 
           {/* Content */}
-          <div className="flex-1 overflow-y-auto p-6">
+          <div ref={contentRef} className="flex-1 overflow-y-auto p-6">
             {loading ? (
               <div className="flex items-center justify-center py-12">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#2E6F40]"></div>
@@ -482,7 +494,18 @@ export default function SubTasksModal({
                   </div>
                 ) : (
                   <button
-                    onClick={() => setAdding(true)}
+                    onClick={() => {
+                      setAdding(true);
+                      // Scroll to bottom after state update
+                      setTimeout(() => {
+                        if (contentRef.current) {
+                          contentRef.current.scrollTo({
+                            top: contentRef.current.scrollHeight,
+                            behavior: "smooth",
+                          });
+                        }
+                      }, 100);
+                    }}
                     className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#2E6F40] hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-gray-600 hover:text-[#2E6F40]"
                   >
                     <Plus className="w-5 h-5" />
