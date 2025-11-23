@@ -18,7 +18,6 @@ export default function AddSubTaskModal({
 }: AddSubTaskModalProps) {
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const handleSubmit = async () => {
     if (!title.trim()) {
@@ -26,16 +25,19 @@ export default function AddSubTaskModal({
       return;
     }
 
-    setIsSubmitting(true);
+    // Close modal immediately for better UX
+    const titleToAdd = title.trim();
+    const descriptionToAdd = description;
+    
+    setTitle("");
+    setDescription("");
+    onClose();
+
+    // Add subtask in background with optimistic UI
     try {
-      await onAdd(title.trim(), description);
-      setTitle("");
-      setDescription("");
-      onClose();
+      await onAdd(titleToAdd, descriptionToAdd);
     } catch (error) {
       // Error is handled in parent component
-    } finally {
-      setIsSubmitting(false);
     }
   };
 
@@ -49,7 +51,7 @@ export default function AddSubTaskModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/20 backdrop-blur-sm z-[55] flex items-center justify-center p-4"
+      className="fixed inset-0 bg-black/20 backdrop-blur-sm z-55 flex items-center justify-center p-4"
       onClick={handleCancel}
     >
       <div
@@ -62,7 +64,6 @@ export default function AddSubTaskModal({
           <button
             onClick={handleCancel}
             className="text-gray-400 hover:text-gray-600 transition-colors"
-            disabled={isSubmitting}
           >
             <X className="w-6 h-6" />
           </button>
@@ -81,7 +82,6 @@ export default function AddSubTaskModal({
               onChange={(e) => setTitle(e.target.value)}
               placeholder="Enter subtask title..."
               className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
-              disabled={isSubmitting}
               autoFocus
             />
           </div>
@@ -95,7 +95,7 @@ export default function AddSubTaskModal({
               content={description}
               onChange={setDescription}
               placeholder="Describe your subtask... You can add images, formatting, links, etc."
-              readOnly={isSubmitting}
+              readOnly={false}
             />
           </div>
         </div>
@@ -104,24 +104,15 @@ export default function AddSubTaskModal({
         <div className="flex items-center justify-end gap-3 p-6 border-t border-gray-200">
           <button
             onClick={handleCancel}
-            disabled={isSubmitting}
-            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+            className="px-6 py-3 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
           >
             Cancel
           </button>
           <button
             onClick={handleSubmit}
-            disabled={isSubmitting}
-            className="px-6 py-3 bg-[#2E6F40] text-white rounded-lg hover:bg-[#68BA7F] transition-colors disabled:opacity-50 disabled:cursor-not-allowed flex items-center gap-2"
+            className="px-6 py-3 bg-[#2E6F40] text-white rounded-lg hover:bg-[#68BA7F] transition-colors"
           >
-            {isSubmitting ? (
-              <>
-                <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                Adding...
-              </>
-            ) : (
-              "Add Subtask"
-            )}
+            Add Subtask
           </button>
         </div>
       </div>

@@ -114,7 +114,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { title, description, images } = await request.json();
+    const { title, description } = await request.json();
 
     if (!title || title.trim() === "") {
       return NextResponse.json(
@@ -145,16 +145,39 @@ export async function POST(
 
     const newOrder = (lastSubTask?.order || 0) + 1;
 
-    // Create subtask with images if provided
+    // Extract embedded images from HTML description
+    const extractedImages: Array<{ filename: string; base64Data: string; mimeType: string }> = [];
+    
+    if (description) {
+      const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
+      let match;
+      let imageIndex = 1;
+      
+      while ((match = imgRegex.exec(description)) !== null) {
+        const mimeType = match[1];
+        const base64Data = match[2];
+        const extension = mimeType.split('/')[1] || 'png';
+        
+        extractedImages.push({
+          filename: `image-${imageIndex}.${extension}`,
+          base64Data,
+          mimeType,
+        });
+        
+        imageIndex++;
+      }
+    }
+
+    // Create subtask with images if found
     const subTask = await prisma.subTask.create({
       data: {
         title: title.trim(),
         description: description?.trim() || null,
         taskId: id,
         order: newOrder,
-        ...(images && images.length > 0 && {
+        ...(extractedImages.length > 0 && {
           images: {
-            create: images.map((img: any, index: number) => ({
+            create: extractedImages.map((img, index) => ({
               filename: img.filename,
               base64Data: img.base64Data,
               mimeType: img.mimeType,

@@ -63,7 +63,7 @@ export async function PUT(
     }
 
     const { id } = await params;
-    const { title, description, images, deletedImageIds } = await request.json();
+    const { title, description } = await request.json();
 
     if (!title || title.trim() === "") {
       return NextResponse.json(
@@ -82,40 +82,87 @@ export async function PUT(
           },
         },
       },
+      include: {
+        images: true,
+      },
     });
 
     if (!subTask) {
       return NextResponse.json({ error: "Subtask not found" }, { status: 404 });
     }
 
-    // Delete specified images
-    if (deletedImageIds && deletedImageIds.length > 0) {
+    // Extract embedded images from new HTML description
+    const newImageSources = new Set<string>();
+    const extractedImages: Array<{ filename: string; base64Data: string; mimeType: string }> = [];
+    
+    if (description) {
+      const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
+      let match;
+      let imageIndex = 1;
+      
+      while ((match = imgRegex.exec(description)) !== null) {
+        const mimeType = match[1];
+        const base64Data = match[2];
+        const extension = mimeType.split('/')[1] || 'png';
+        const imageSource = `data:${mimeType};base64,${base64Data}`;
+        
+        newImageSources.add(imageSource);
+        
+        // Check if this image already exists in the database
+        const existingImage = subTask.images.find(img => 
+          `data:${img.mimeType};base64,${img.base64Data}` === imageSource
+        );
+        
+        if (!existingImage) {
+          extractedImages.push({
+            filename: `image-${imageIndex}.${extension}`,
+            base64Data,
+            mimeType,
+          });
+        }
+        
+        imageIndex++;
+      }
+    }
+
+    // Find images to delete (images in DB that are no longer in HTML)
+    const imagesToDelete = subTask.images.filter(img => {
+      const imageSource = `data:${img.mimeType};base64,${img.base64Data}`;
+      return !newImageSources.has(imageSource);
+    });
+
+    // Delete removed images
+    if (imagesToDelete.length > 0) {
       await prisma.subTaskImage.deleteMany({
         where: {
-          id: { in: deletedImageIds },
-          subTaskId: id,
+          id: { in: imagesToDelete.map(img => img.id) },
         },
       });
 
       // Remove from cache
-      deletedImageIds.forEach((imageId: string) => {
-        removeImageFromCache(imageId);
+      imagesToDelete.forEach((image) => {
+        removeImageFromCache(image.id);
       });
     }
 
-    // Update subtask and add new images if provided
+    // Get current max order for new images
+    const maxOrder = subTask.images.length > 0 
+      ? Math.max(...subTask.images.map(img => img.order))
+      : 0;
+
+    // Update subtask and add new images if found
     const updatedSubTask = await prisma.subTask.update({
       where: { id },
       data: {
         title: title.trim(),
         description: description?.trim() || null,
-        ...(images && images.length > 0 && {
+        ...(extractedImages.length > 0 && {
           images: {
-            create: images.map((img: any, index: number) => ({
+            create: extractedImages.map((img, index) => ({
               filename: img.filename,
               base64Data: img.base64Data,
               mimeType: img.mimeType,
-              order: index + 1,
+              order: maxOrder + index + 1,
             })),
           },
         }),

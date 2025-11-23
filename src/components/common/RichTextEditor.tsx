@@ -50,6 +50,33 @@ export default function RichTextEditor({
       attributes: {
         class: "prose prose-sm max-w-none focus:outline-none min-h-[200px] p-4",
       },
+      handlePaste: (view, event) => {
+        const items = event.clipboardData?.items;
+        if (!items) return false;
+
+        for (let i = 0; i < items.length; i++) {
+          const item = items[i];
+          if (item.type.indexOf("image") === 0) {
+            event.preventDefault();
+            const file = item.getAsFile();
+            if (!file) continue;
+
+            if (file.size > 5 * 1024 * 1024) {
+              alert("Image too large. Maximum size: 5MB");
+              return true;
+            }
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+              const url = e.target?.result as string;
+              editor?.chain().focus().setImage({ src: url }).run();
+            };
+            reader.readAsDataURL(file);
+            return true;
+          }
+        }
+        return false;
+      },
     },
   });
 
