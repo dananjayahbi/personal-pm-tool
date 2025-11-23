@@ -85,39 +85,20 @@ export default function ViewSubTaskModal({
             </div>
 
             {/* Description */}
-            {(subTask.description || (subTask.images && subTask.images.length > 0)) && (
+            {subTask.description && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description
                 </label>
                 <div className="p-4 bg-gray-50 rounded-lg prose prose-sm max-w-none">
-                  {/* Description text */}
-                  {subTask.description && (
-                    <div dangerouslySetInnerHTML={{ __html: subTask.description }} />
-                  )}
-                  
-                  {/* Images */}
-                  {subTask.images && subTask.images.length > 0 && (
-                    <div className="mt-4 space-y-4">
-                      {subTask.images
-                        .sort((a, b) => a.order - b.order)
-                        .map((image) => (
-                          <div key={image.id}>
-                            <img
-                              src={`data:${image.mimeType};base64,${image.base64Data}`}
-                              alt={image.filename}
-                              className="rounded-lg max-w-full h-auto"
-                            />
-                          </div>
-                        ))}
-                    </div>
-                  )}
+                  {/* Description text with embedded images */}
+                  <div dangerouslySetInnerHTML={{ __html: subTask.description }} />
                 </div>
               </div>
             )}
 
-            {/* Empty State for No Description and No Images */}
-            {!subTask.description && (!subTask.images || subTask.images.length === 0) && (
+            {/* Empty State for No Description */}
+            {!subTask.description && (
               <div className="text-center py-8">
                 <p className="text-gray-500">No additional details available</p>
               </div>

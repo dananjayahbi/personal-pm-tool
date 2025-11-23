@@ -92,51 +92,43 @@ export async function PUT(
     }
 
     // Extract embedded images from new HTML description
-    const newImageSources = new Set<string>();
-    const extractedImages: Array<{ filename: string; base64Data: string; mimeType: string }> = [];
-    let cleanedDescription = description?.trim() || null;
+    const newImages = new Map<string, { filename: string; base64Data: string; mimeType: string; imageId?: string }>();
+    const existingImageIds = new Set<string>();
+    let processedDescription = description?.trim() || null;
     
-    if (cleanedDescription) {
-      const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
-      let match;
+    if (processedDescription) {
+      // First, collect existing images by their IDs from data-image-id attributes
+      const existingImgRegex = /<img[^>]+data-image-id="([^"]+)"[^>]*>/g;
+      let existingMatch;
+      
+      while ((existingMatch = existingImgRegex.exec(processedDescription)) !== null) {
+        const imageId = existingMatch[1];
+        existingImageIds.add(imageId);
+      }
+      
+      // Then, find new images (those with base64 data but no image ID)
+      const newImgRegex = /<img(?![^>]*data-image-id)[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
+      let newMatch;
       let imageIndex = 1;
       
-      while ((match = imgRegex.exec(cleanedDescription)) !== null) {
-        const mimeType = match[1];
-        const base64Data = match[2];
+      while ((newMatch = newImgRegex.exec(processedDescription)) !== null) {
+        const mimeType = newMatch[1];
+        const base64Data = newMatch[2];
         const extension = mimeType.split('/')[1] || 'png';
         const imageSource = `data:${mimeType};base64,${base64Data}`;
         
-        newImageSources.add(imageSource);
-        
-        // Check if this image already exists in the database
-        const existingImage = subTask.images.find(img => 
-          `data:${img.mimeType};base64,${img.base64Data}` === imageSource
-        );
-        
-        if (!existingImage) {
-          extractedImages.push({
-            filename: `image-${imageIndex}.${extension}`,
-            base64Data,
-            mimeType,
-          });
-        }
+        newImages.set(imageSource, {
+          filename: `image-${imageIndex}.${extension}`,
+          base64Data,
+          mimeType,
+        });
         
         imageIndex++;
       }
-      
-      // Remove img tags from description after extracting them
-      // This prevents duplication and ensures images are only in SubTaskImage table
-      if (newImageSources.size > 0) {
-        cleanedDescription = cleanedDescription.replace(/<img[^>]*>/gi, '').trim() || null;
-      }
     }
 
-    // Find images to delete (images in DB that are no longer in HTML)
-    const imagesToDelete = subTask.images.filter(img => {
-      const imageSource = `data:${img.mimeType};base64,${img.base64Data}`;
-      return !newImageSources.has(imageSource);
-    });
+    // Find images to delete (images in DB that are not referenced by ID)
+    const imagesToDelete = subTask.images.filter(img => !existingImageIds.has(img.id));
 
     // Delete removed images
     if (imagesToDelete.length > 0) {
@@ -153,8 +145,9 @@ export async function PUT(
     }
 
     // Get current max order for new images
-    const maxOrder = subTask.images.length > 0 
-      ? Math.max(...subTask.images.map(img => img.order))
+    const remainingImages = subTask.images.filter(img => !imagesToDelete.includes(img));
+    const maxOrder = remainingImages.length > 0 
+      ? Math.max(...remainingImages.map(img => img.order))
       : 0;
 
     // Update subtask and add new images if found
@@ -162,10 +155,10 @@ export async function PUT(
       where: { id },
       data: {
         title: title.trim(),
-        description: cleanedDescription,
-        ...(extractedImages.length > 0 && {
+        description: processedDescription, // Will be updated with image IDs below
+        ...(newImages.size > 0 && {
           images: {
-            create: extractedImages.map((img, index) => ({
+            create: Array.from(newImages.values()).map((img, index) => ({
               filename: img.filename,
               base64Data: img.base64Data,
               mimeType: img.mimeType,
@@ -179,7 +172,32 @@ export async function PUT(
       },
     });
 
-    // Cache new images
+    // Replace base64 data URLs with image IDs in the description for newly added images
+    if (newImages.size > 0 && processedDescription) {
+      let updatedDescription = processedDescription;
+      const newlyCreatedImages = updatedSubTask.images
+        .filter(img => !existingImageIds.has(img.id))
+        .sort((a, b) => a.order - b.order);
+      
+      newlyCreatedImages.forEach((image) => {
+        // Find and replace the first base64 img tag (without data-image-id) with one that includes the image ID
+        const imgRegex = /<img(?![^>]*data-image-id)[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/;
+        updatedDescription = updatedDescription.replace(imgRegex, (match: string) => {
+          // Add data-image-id attribute to the img tag
+          return match.replace(/<img/, `<img data-image-id="${image.id}"`);
+        });
+      });
+      
+      // Update the subtask with the new description containing image IDs
+      await prisma.subTask.update({
+        where: { id: updatedSubTask.id },
+        data: { description: updatedDescription },
+      });
+      
+      updatedSubTask.description = updatedDescription;
+    }
+
+    // Cache all images (existing and new)
     if (updatedSubTask.images && updatedSubTask.images.length > 0) {
       updatedSubTask.images.forEach((image) => {
         saveImageToCache(image.id, image.base64Data, image.mimeType, image.filename);
