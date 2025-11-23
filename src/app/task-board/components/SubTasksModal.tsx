@@ -1,8 +1,17 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Plus, Trash2, GripVertical, Check, Edit2, ExternalLink } from "lucide-react";
+import { X, Plus, Trash2, GripVertical, Check, Edit2, ExternalLink, Image as ImageIcon, Upload } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
+import { fileToBase64, base64ToImageUrl, handlePasteImage, processFiles, ImageData } from "@/lib/utils/imageEngineClient";
+
+interface SubTaskImage {
+  id: string;
+  filename: string;
+  base64Data: string;
+  mimeType: string;
+  order: number;
+}
 
 interface SubTask {
   id: string;
@@ -10,6 +19,7 @@ interface SubTask {
   description: string | null;
   isCompleted: boolean;
   order: number;
+  images?: SubTaskImage[];
 }
 
 interface SubTasksModalProps {
@@ -31,10 +41,15 @@ export default function SubTasksModal({
   const [editingId, setEditingId] = useState<string | null>(null);
   const [newSubTaskTitle, setNewSubTaskTitle] = useState("");
   const [newSubTaskDescription, setNewSubTaskDescription] = useState("");
+  const [newSubTaskImages, setNewSubTaskImages] = useState<ImageData[]>([]);
   const [editTitle, setEditTitle] = useState("");
   const [editDescription, setEditDescription] = useState("");
+  const [editImages, setEditImages] = useState<ImageData[]>([]);
+  const [deletedImageIds, setDeletedImageIds] = useState<string[]>([]);
   const [draggedSubTaskId, setDraggedSubTaskId] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (isOpen && taskId) {
@@ -73,14 +88,21 @@ export default function SubTasksModal({
       description: newSubTaskDescription.trim() || null,
       isCompleted: false,
       order: subTasks.length + 1,
+      images: newSubTaskImages.map((img, idx) => ({
+        id: `temp-img-${idx}`,
+        ...img,
+        order: idx + 1,
+      })),
     };
 
     // Optimistic UI: Add skeleton subtask immediately
     setSubTasks((prev) => [...prev, tempSubTask]);
     const titleValue = newSubTaskTitle.trim();
     const descValue = newSubTaskDescription.trim();
+    const imagesValue = [...newSubTaskImages];
     setNewSubTaskTitle("");
     setNewSubTaskDescription("");
+    setNewSubTaskImages([]);
     setAdding(false);
 
     // Add to database in background
@@ -91,6 +113,7 @@ export default function SubTasksModal({
         body: JSON.stringify({
           title: titleValue,
           description: descValue || null,
+          images: imagesValue.length > 0 ? imagesValue : undefined,
         }),
       });
 
@@ -174,12 +197,16 @@ export default function SubTasksModal({
     setEditingId(subtask.id);
     setEditTitle(subtask.title);
     setEditDescription(subtask.description || "");
+    setEditImages([]);
+    setDeletedImageIds([]);
   };
 
   const handleCancelEdit = () => {
     setEditingId(null);
     setEditTitle("");
     setEditDescription("");
+    setEditImages([]);
+    setDeletedImageIds([]);
   };
 
   const handleSaveEdit = async (subtaskId: string) => {
@@ -200,9 +227,13 @@ export default function SubTasksModal({
 
     const titleValue = editTitle.trim();
     const descValue = editDescription.trim();
+    const imagesValue = [...editImages];
+    const deletedIds = [...deletedImageIds];
     setEditingId(null);
     setEditTitle("");
     setEditDescription("");
+    setEditImages([]);
+    setDeletedImageIds([]);
 
     try {
       const response = await fetch(`/api/subtasks/${subtaskId}`, {
@@ -211,10 +242,17 @@ export default function SubTasksModal({
         body: JSON.stringify({
           title: titleValue,
           description: descValue || null,
+          images: imagesValue.length > 0 ? imagesValue : undefined,
+          deletedImageIds: deletedIds.length > 0 ? deletedIds : undefined,
         }),
       });
 
       if (response.ok) {
+        const data = await response.json();
+        // Update with real data from API
+        setSubTasks((prev) =>
+          prev.map((st) => (st.id === subtaskId ? data.subTask : st))
+        );
         showToast.success("Subtask updated");
       } else {
         // Rollback on failure
@@ -269,6 +307,55 @@ export default function SubTasksModal({
       showToast.error("Failed to reorder subtask");
       fetchSubTasks();
     }
+  };
+
+  // Image handling functions
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>, isEdit: boolean = false) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+
+    try {
+      const imageData = await processFiles(files);
+      if (isEdit) {
+        setEditImages((prev) => [...prev, ...imageData]);
+      } else {
+        setNewSubTaskImages((prev) => [...prev, ...imageData]);
+      }
+      showToast.success(`${imageData.length} image(s) added`);
+    } catch (error: any) {
+      showToast.error(error.message || "Failed to process images");
+    }
+
+    // Reset input
+    e.target.value = "";
+  };
+
+  const handlePaste = async (e: React.ClipboardEvent, isEdit: boolean = false) => {
+    try {
+      const imageData = await handlePasteImage(e.nativeEvent);
+      if (imageData) {
+        if (isEdit) {
+          setEditImages((prev) => [...prev, imageData]);
+        } else {
+          setNewSubTaskImages((prev) => [...prev, imageData]);
+        }
+        showToast.success("Image pasted");
+      }
+    } catch (error: any) {
+      showToast.error(error.message || "Failed to paste image");
+    }
+  };
+
+  const removeNewImage = (index: number) => {
+    setNewSubTaskImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeEditImage = (index: number) => {
+    setEditImages((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const removeExistingImage = (imageId: string) => {
+    setDeletedImageIds((prev) => [...prev, imageId]);
   };
 
   const completedCount = subTasks.filter((st) => st.isCompleted).length;
@@ -389,6 +476,7 @@ export default function SubTasksModal({
                               handleCancelEdit();
                             }
                           }}
+                          onPaste={(e) => handlePaste(e, true)}
                           placeholder="Subtask title *"
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
                           autoFocus
@@ -396,10 +484,82 @@ export default function SubTasksModal({
                         <textarea
                           value={editDescription}
                           onChange={(e) => setEditDescription(e.target.value)}
+                          onPaste={(e) => handlePaste(e, true)}
                           placeholder="Description (optional)"
                           rows={2}
                           className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
                         />
+                        
+                        {/* Existing Images */}
+                        {subTask.images && subTask.images.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">Existing Images</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {subTask.images
+                                .filter((img) => !deletedImageIds.includes(img.id))
+                                .map((img) => (
+                                  <div key={img.id} className="relative group">
+                                    <img
+                                      src={base64ToImageUrl(img.base64Data, img.mimeType)}
+                                      alt={img.filename}
+                                      className="w-full h-20 object-cover rounded-lg"
+                                    />
+                                    <button
+                                      onClick={() => removeExistingImage(img.id)}
+                                      className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* New Images */}
+                        {editImages.length > 0 && (
+                          <div className="space-y-2">
+                            <label className="text-sm font-medium text-gray-700">New Images</label>
+                            <div className="grid grid-cols-3 gap-2">
+                              {editImages.map((img, idx) => (
+                                <div key={idx} className="relative group">
+                                  <img
+                                    src={base64ToImageUrl(img.base64Data, img.mimeType)}
+                                    alt={img.filename}
+                                    className="w-full h-20 object-cover rounded-lg"
+                                  />
+                                  <button
+                                    onClick={() => removeEditImage(idx)}
+                                    className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ))}
+                            </div>
+                          </div>
+                        )}
+
+                        {/* Image Upload */}
+                        <div>
+                          <input
+                            ref={editFileInputRef}
+                            type="file"
+                            accept="image/*"
+                            multiple
+                            onChange={(e) => handleFileUpload(e, true)}
+                            className="hidden"
+                          />
+                          <button
+                            type="button"
+                            onClick={() => editFileInputRef.current?.click()}
+                            className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-gray-100 rounded-lg hover:bg-gray-200 transition-colors"
+                          >
+                            <Upload className="w-4 h-4" />
+                            Add Images (or paste)
+                          </button>
+                        </div>
+
                         <div className="flex gap-2">
                           <button
                             onClick={() => handleSaveEdit(subTask.id)}
@@ -433,6 +593,22 @@ export default function SubTasksModal({
                               {subTask.description}
                             </p>
                           )}
+                          {/* Display Images */}
+                          {subTask.images && subTask.images.length > 0 && (
+                            <div className="grid grid-cols-4 gap-2 mt-2">
+                              {subTask.images.map((img) => (
+                                <div key={img.id} className="relative group">
+                                  <img
+                                    src={base64ToImageUrl(img.base64Data, img.mimeType)}
+                                    alt={img.filename}
+                                    className="w-full h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
+                                    onClick={() => window.open(base64ToImageUrl(img.base64Data, img.mimeType), '_blank')}
+                                    title={img.filename}
+                                  />
+                                </div>
+                              ))}
+                            </div>
+                          )}
                         </div>
                         <div className="flex gap-1 shrink-0">
                           <button
@@ -462,6 +638,7 @@ export default function SubTasksModal({
                       type="text"
                       value={newSubTaskTitle}
                       onChange={(e) => setNewSubTaskTitle(e.target.value)}
+                      onPaste={(e) => handlePaste(e, false)}
                       placeholder="Subtask title..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-2 focus:outline-none focus:ring-2 focus:ring-[#2E6F40]"
                       autoFocus
@@ -469,10 +646,58 @@ export default function SubTasksModal({
                     <textarea
                       value={newSubTaskDescription}
                       onChange={(e) => setNewSubTaskDescription(e.target.value)}
+                      onPaste={(e) => handlePaste(e, false)}
                       placeholder="Description (optional)..."
                       className="w-full px-3 py-2 border border-gray-300 rounded-lg mb-3 focus:outline-none focus:ring-2 focus:ring-[#2E6F40] resize-none"
                       rows={2}
                     />
+                    
+                    {/* Image Preview */}
+                    {newSubTaskImages.length > 0 && (
+                      <div className="mb-3 space-y-2">
+                        <label className="text-sm font-medium text-gray-700">
+                          Images ({newSubTaskImages.length})
+                        </label>
+                        <div className="grid grid-cols-4 gap-2">
+                          {newSubTaskImages.map((img, idx) => (
+                            <div key={idx} className="relative group">
+                              <img
+                                src={base64ToImageUrl(img.base64Data, img.mimeType)}
+                                alt={img.filename}
+                                className="w-full h-20 object-cover rounded-lg"
+                              />
+                              <button
+                                onClick={() => removeNewImage(idx)}
+                                className="absolute top-1 right-1 bg-red-500 text-white p-1 rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                              >
+                                <X className="w-3 h-3" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Image Upload */}
+                    <div className="mb-3">
+                      <input
+                        ref={fileInputRef}
+                        type="file"
+                        accept="image/*"
+                        multiple
+                        onChange={(e) => handleFileUpload(e, false)}
+                        className="hidden"
+                      />
+                      <button
+                        type="button"
+                        onClick={() => fileInputRef.current?.click()}
+                        className="flex items-center gap-2 px-3 py-2 text-sm text-gray-700 bg-white border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors"
+                      >
+                        <Upload className="w-4 h-4" />
+                        Add Images (or paste with Ctrl+V)
+                      </button>
+                    </div>
+
                     <div className="flex gap-2">
                       <button
                         onClick={handleAddSubTask}
@@ -485,6 +710,7 @@ export default function SubTasksModal({
                           setAdding(false);
                           setNewSubTaskTitle("");
                           setNewSubTaskDescription("");
+                          setNewSubTaskImages([]);
                         }}
                         className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
                       >

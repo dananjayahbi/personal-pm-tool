@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { verifyAuth } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { NextRequest } from "next/server";
+import { getImageFromCache, saveImageToCache } from "@/lib/utils/imageEngine";
 
 export async function GET(
   request: NextRequest,
@@ -29,13 +30,70 @@ export async function GET(
       return NextResponse.json({ error: "Task not found" }, { status: 404 });
     }
 
-    // Fetch subtasks
+    // Fetch subtasks without images first (for performance)
     const subTasks = await prisma.subTask.findMany({
       where: { taskId: id },
       orderBy: { order: "asc" },
+      include: {
+        images: {
+          select: {
+            id: true,
+            filename: true,
+            mimeType: true,
+            order: true,
+          },
+          orderBy: { order: "asc" },
+        },
+      },
     });
 
-    return NextResponse.json({ subTasks });
+    // Add base64 data from cache or database
+    const subTasksWithImages = await Promise.all(
+      subTasks.map(async (subTask) => {
+        if (subTask.images.length === 0) {
+          return subTask;
+        }
+
+        const imagesWithData = await Promise.all(
+          subTask.images.map(async (image) => {
+            // Try to get from cache first
+            let cachedImage = getImageFromCache(image.id);
+            
+            if (cachedImage) {
+              return {
+                ...image,
+                base64Data: cachedImage.base64Data,
+              };
+            }
+
+            // If not in cache, fetch from database
+            const fullImage = await prisma.subTaskImage.findUnique({
+              where: { id: image.id },
+              select: { base64Data: true },
+            });
+
+            if (fullImage) {
+              // Save to cache for next time
+              saveImageToCache(image.id, fullImage.base64Data, image.mimeType, image.filename);
+              
+              return {
+                ...image,
+                base64Data: fullImage.base64Data,
+              };
+            }
+
+            return image;
+          })
+        );
+
+        return {
+          ...subTask,
+          images: imagesWithData,
+        };
+      })
+    );
+
+    return NextResponse.json({ subTasks: subTasksWithImages });
   } catch (error) {
     console.error("Error fetching subtasks:", error);
     return NextResponse.json(
@@ -56,7 +114,7 @@ export async function POST(
     }
 
     const { id } = await params;
-    const { title, description } = await request.json();
+    const { title, description, images } = await request.json();
 
     if (!title || title.trim() === "") {
       return NextResponse.json(
@@ -87,15 +145,35 @@ export async function POST(
 
     const newOrder = (lastSubTask?.order || 0) + 1;
 
-    // Create subtask
+    // Create subtask with images if provided
     const subTask = await prisma.subTask.create({
       data: {
         title: title.trim(),
         description: description?.trim() || null,
         taskId: id,
         order: newOrder,
+        ...(images && images.length > 0 && {
+          images: {
+            create: images.map((img: any, index: number) => ({
+              filename: img.filename,
+              base64Data: img.base64Data,
+              mimeType: img.mimeType,
+              order: index + 1,
+            })),
+          },
+        }),
+      },
+      include: {
+        images: true,
       },
     });
+
+    // Cache the images
+    if (subTask.images && subTask.images.length > 0) {
+      subTask.images.forEach((image) => {
+        saveImageToCache(image.id, image.base64Data, image.mimeType, image.filename);
+      });
+    }
 
     return NextResponse.json({ subTask }, { status: 201 });
   } catch (error) {

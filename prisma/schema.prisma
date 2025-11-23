@@ -102,8 +102,26 @@ model SubTask {
   taskId      String
   task        Task     @relation(fields: [taskId], references: [id], onDelete: Cascade)
   
+  // Image attachments for this subtask
+  images      SubTaskImage[]
+  
   @@map("subtasks")
   @@index([taskId])
+}
+
+model SubTaskImage {
+  id          String   @id @default(cuid())
+  filename    String   // Original filename
+  base64Data  String   @db.Text // Base64 encoded image data
+  mimeType    String   // image/png, image/jpeg, etc.
+  order       Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  subTaskId   String
+  subTask     SubTask  @relation(fields: [subTaskId], references: [id], onDelete: Cascade)
+  
+  @@map("subtask_images")
+  @@index([subTaskId])
 }
 
 model Notification {
