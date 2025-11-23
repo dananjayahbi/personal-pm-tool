@@ -2,12 +2,21 @@
 
 import { X } from "lucide-react";
 
+interface SubTaskImage {
+  id: string;
+  filename: string;
+  base64Data: string;
+  mimeType: string;
+  order: number;
+}
+
 interface SubTask {
   id: string;
   title: string;
   description: string | null;
   isCompleted: boolean;
   order: number;
+  images?: SubTaskImage[];
 }
 
 interface ViewSubTaskModalProps {
@@ -76,20 +85,39 @@ export default function ViewSubTaskModal({
             </div>
 
             {/* Description */}
-            {subTask.description && (
+            {(subTask.description || (subTask.images && subTask.images.length > 0)) && (
               <div>
                 <label className="block text-sm font-medium text-gray-700 mb-2">
                   Description
                 </label>
-                <div
-                  className="p-4 bg-gray-50 rounded-lg prose prose-sm max-w-none"
-                  dangerouslySetInnerHTML={{ __html: subTask.description }}
-                />
+                <div className="p-4 bg-gray-50 rounded-lg prose prose-sm max-w-none">
+                  {/* Description text */}
+                  {subTask.description && (
+                    <div dangerouslySetInnerHTML={{ __html: subTask.description }} />
+                  )}
+                  
+                  {/* Images */}
+                  {subTask.images && subTask.images.length > 0 && (
+                    <div className="mt-4 space-y-4">
+                      {subTask.images
+                        .sort((a, b) => a.order - b.order)
+                        .map((image) => (
+                          <div key={image.id}>
+                            <img
+                              src={`data:${image.mimeType};base64,${image.base64Data}`}
+                              alt={image.filename}
+                              className="rounded-lg max-w-full h-auto"
+                            />
+                          </div>
+                        ))}
+                    </div>
+                  )}
+                </div>
               </div>
             )}
 
-            {/* Empty State for No Description */}
-            {!subTask.description && (
+            {/* Empty State for No Description and No Images */}
+            {!subTask.description && (!subTask.images || subTask.images.length === 0) && (
               <div className="text-center py-8">
                 <p className="text-gray-500">No additional details available</p>
               </div>

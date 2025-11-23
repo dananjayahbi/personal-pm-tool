@@ -3,9 +3,9 @@
 import { useState, useEffect, useRef } from "react";
 import { X, Plus, Trash2, GripVertical, Check, Edit2, ExternalLink, Eye } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
-import AddSubTaskModal from "./AddSubTaskModal";
-import EditSubTaskModal from "./EditSubTaskModal";
-import ViewSubTaskModal from "./ViewSubTaskModal";
+import AddSubTaskModal from "../subtasks/[id]/components/AddSubTaskModal";
+import EditSubTaskModal from "../subtasks/[id]/components/EditSubTaskModal";
+import ViewSubTaskModal from "../subtasks/[id]/components/ViewSubTaskModal";
 
 interface SubTaskImage {
   id: string;

@@ -94,13 +94,14 @@ export async function PUT(
     // Extract embedded images from new HTML description
     const newImageSources = new Set<string>();
     const extractedImages: Array<{ filename: string; base64Data: string; mimeType: string }> = [];
+    let cleanedDescription = description?.trim() || null;
     
-    if (description) {
+    if (cleanedDescription) {
       const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
       let match;
       let imageIndex = 1;
       
-      while ((match = imgRegex.exec(description)) !== null) {
+      while ((match = imgRegex.exec(cleanedDescription)) !== null) {
         const mimeType = match[1];
         const base64Data = match[2];
         const extension = mimeType.split('/')[1] || 'png';
@@ -122,6 +123,12 @@ export async function PUT(
         }
         
         imageIndex++;
+      }
+      
+      // Remove img tags from description after extracting them
+      // This prevents duplication and ensures images are only in SubTaskImage table
+      if (newImageSources.size > 0) {
+        cleanedDescription = cleanedDescription.replace(/<img[^>]*>/gi, '').trim() || null;
       }
     }
 
@@ -155,7 +162,7 @@ export async function PUT(
       where: { id },
       data: {
         title: title.trim(),
-        description: description?.trim() || null,
+        description: cleanedDescription,
         ...(extractedImages.length > 0 && {
           images: {
             create: extractedImages.map((img, index) => ({

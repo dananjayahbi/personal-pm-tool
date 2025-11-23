@@ -147,13 +147,14 @@ export async function POST(
 
     // Extract embedded images from HTML description
     const extractedImages: Array<{ filename: string; base64Data: string; mimeType: string }> = [];
+    let cleanedDescription = description?.trim() || null;
     
-    if (description) {
+    if (cleanedDescription) {
       const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
       let match;
       let imageIndex = 1;
       
-      while ((match = imgRegex.exec(description)) !== null) {
+      while ((match = imgRegex.exec(cleanedDescription)) !== null) {
         const mimeType = match[1];
         const base64Data = match[2];
         const extension = mimeType.split('/')[1] || 'png';
@@ -166,13 +167,19 @@ export async function POST(
         
         imageIndex++;
       }
+      
+      // Remove img tags from description after extracting them
+      // This prevents duplication and ensures images are only in SubTaskImage table
+      if (extractedImages.length > 0) {
+        cleanedDescription = cleanedDescription.replace(/<img[^>]*>/gi, '').trim() || null;
+      }
     }
 
     // Create subtask with images if found
     const subTask = await prisma.subTask.create({
       data: {
         title: title.trim(),
-        description: description?.trim() || null,
+        description: cleanedDescription,
         taskId: id,
         order: newOrder,
         ...(extractedImages.length > 0 && {

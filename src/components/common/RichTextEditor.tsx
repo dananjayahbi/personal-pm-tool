@@ -82,7 +82,11 @@ export default function RichTextEditor({
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
-      editor.commands.setContent(content);
+      // Use a small timeout to ensure the editor is ready
+      const timer = setTimeout(() => {
+        editor.commands.setContent(content, { emitUpdate: false });
+      }, 0);
+      return () => clearTimeout(timer);
     }
   }, [content, editor]);
 

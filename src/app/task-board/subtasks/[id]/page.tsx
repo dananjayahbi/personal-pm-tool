@@ -9,8 +9,20 @@ import {
   GripVertical,
   Check,
   Edit2,
+  Eye,
 } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
+import AddSubTaskModal from "./components/AddSubTaskModal";
+import EditSubTaskModal from "./components/EditSubTaskModal";
+import ViewSubTaskModal from "./components/ViewSubTaskModal";
+
+interface SubTaskImage {
+  id: string;
+  filename: string;
+  base64Data: string;
+  mimeType: string;
+  order: number;
+}
 
 interface SubTask {
   id: string;
@@ -18,6 +30,7 @@ interface SubTask {
   description: string | null;
   isCompleted: boolean;
   order: number;
+  images?: SubTaskImage[];
 }
 
 interface Task {
@@ -34,12 +47,9 @@ export default function SubTasksPage() {
   const [task, setTask] = useState<Task | null>(null);
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
   const [loading, setLoading] = useState(false);
-  const [adding, setAdding] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [newSubTaskTitle, setNewSubTaskTitle] = useState("");
-  const [newSubTaskDescription, setNewSubTaskDescription] = useState("");
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  const [showAddModal, setShowAddModal] = useState(false);
+  const [editingSubTask, setEditingSubTask] = useState<SubTask | null>(null);
+  const [viewingSubTask, setViewingSubTask] = useState<SubTask | null>(null);
   const [draggedSubTaskId, setDraggedSubTaskId] = useState<string | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
@@ -82,51 +92,50 @@ export default function SubTasksPage() {
     }
   };
 
-  const handleAddSubTask = async () => {
-    if (!newSubTaskTitle.trim()) {
-      showToast.error("Subtask title is required");
-      return;
-    }
-
+  const handleAddSubTask = async (title: string, description: string) => {
+    // Create temporary subtask for optimistic UI
     const tempId = `temp-${Date.now()}`;
     const tempSubTask: SubTask = {
       id: tempId,
-      title: newSubTaskTitle.trim(),
-      description: newSubTaskDescription.trim() || null,
+      title,
+      description,
       isCompleted: false,
       order: subTasks.length + 1,
+      images: [],
     };
 
+    // Optimistic UI: Add skeleton subtask immediately
     setSubTasks((prev) => [...prev, tempSubTask]);
-    const titleValue = newSubTaskTitle.trim();
-    const descValue = newSubTaskDescription.trim();
-    setNewSubTaskTitle("");
-    setNewSubTaskDescription("");
-    setAdding(false);
 
+    // Add to database in background
     try {
       const response = await fetch(`/api/tasks/${taskId}/subtasks`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: titleValue,
-          description: descValue || null,
+          title,
+          description,
         }),
       });
 
       if (response.ok) {
         const data = await response.json();
+        // Replace temp subtask with real data from API
         setSubTasks((prev) =>
           prev.map((st) => (st.id === tempId ? data.subTask : st))
         );
         showToast.success("Subtask added");
       } else {
+        // Remove skeleton on failure
         setSubTasks((prev) => prev.filter((st) => st.id !== tempId));
         showToast.error("Failed to add subtask");
+        throw new Error("Failed to add subtask");
       }
     } catch (error) {
+      // Remove skeleton on error
       setSubTasks((prev) => prev.filter((st) => st.id !== tempId));
       showToast.error("Failed to add subtask");
+      throw error;
     }
   };
 
@@ -134,6 +143,7 @@ export default function SubTasksPage() {
     subTaskId: string,
     isCompleted: boolean
   ) => {
+    // Optimistic UI update
     setSubTasks((prev) =>
       prev.map((st) =>
         st.id === subTaskId ? { ...st, isCompleted: !isCompleted } : st
@@ -148,20 +158,27 @@ export default function SubTasksPage() {
       });
 
       if (!response.ok) {
+        // Rollback on failure
         setSubTasks((prev) =>
-          prev.map((st) => (st.id === subTaskId ? { ...st, isCompleted } : st))
+          prev.map((st) =>
+            st.id === subTaskId ? { ...st, isCompleted } : st
+          )
         );
         showToast.error("Failed to update subtask");
       }
     } catch (error) {
+      // Rollback on error
       setSubTasks((prev) =>
-        prev.map((st) => (st.id === subTaskId ? { ...st, isCompleted } : st))
+        prev.map((st) =>
+          st.id === subTaskId ? { ...st, isCompleted } : st
+        )
       );
       showToast.error("Failed to update subtask");
     }
   };
 
   const handleDeleteSubTask = async (subTaskId: string) => {
+    // Optimistic UI update
     const oldSubTasks = [...subTasks];
     setSubTasks((prev) => prev.filter((st) => st.id !== subTaskId));
 
@@ -183,59 +200,49 @@ export default function SubTasksPage() {
   };
 
   const handleEditClick = (subtask: SubTask) => {
-    setEditingId(subtask.id);
-    setEditTitle(subtask.title);
-    setEditDescription(subtask.description || "");
+    setEditingSubTask(subtask);
   };
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditTitle("");
-    setEditDescription("");
-  };
-
-  const handleSaveEdit = async (subtaskId: string) => {
-    if (!editTitle.trim()) {
+  const handleUpdateSubTask = async (subtaskId: string, title: string, description: string) => {
+    if (!title.trim()) {
       showToast.error("Subtask title is required");
       return;
     }
 
+    // Optimistic UI: Update in list immediately
     const previousSubTasks = [...subTasks];
     setSubTasks((prev) =>
       prev.map((st) =>
         st.id === subtaskId
-          ? {
-              ...st,
-              title: editTitle.trim(),
-              description: editDescription.trim() || null,
-            }
+          ? { ...st, title: title.trim(), description: description || null }
           : st
       )
     );
-
-    const titleValue = editTitle.trim();
-    const descValue = editDescription.trim();
-    setEditingId(null);
-    setEditTitle("");
-    setEditDescription("");
 
     try {
       const response = await fetch(`/api/subtasks/${subtaskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: titleValue,
-          description: descValue || null,
+          title: title.trim(),
+          description: description || null,
         }),
       });
 
       if (response.ok) {
+        const data = await response.json();
+        // Update with real data from API
+        setSubTasks((prev) =>
+          prev.map((st) => (st.id === subtaskId ? data.subTask : st))
+        );
         showToast.success("Subtask updated");
       } else {
+        // Rollback on failure
         setSubTasks(previousSubTasks);
         showToast.error("Failed to update subtask");
       }
     } catch (error) {
+      // Rollback on error
       setSubTasks(previousSubTasks);
       showToast.error("Failed to update subtask");
     }
@@ -340,177 +347,81 @@ export default function SubTasksPage() {
             {subTasks.map((subTask) => (
               <div
                 key={subTask.id}
-                draggable={editingId !== subTask.id}
+                draggable={true}
                 onDragStart={(e) => handleDragStart(e, subTask.id)}
                 onDragOver={handleDragOver}
                 onDrop={(e) => handleDrop(e, subTask.id)}
-                className={`flex items-start gap-3 p-4 bg-white rounded-xl border-2 transition-all ${
+                className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                   subTask.id.startsWith("temp-")
-                    ? "border-gray-300 animate-pulse"
-                    : editingId === subTask.id
-                    ? "border-blue-200 shadow-sm"
-                    : `${
+                    ? "bg-gray-100 border-gray-300 animate-pulse"
+                    : `bg-gray-50 ${
                         draggedSubTaskId === subTask.id
                           ? "border-[#2E6F40] opacity-50 cursor-move"
-                          : "border-gray-200 hover:border-gray-300 hover:shadow-sm cursor-move"
+                          : "border-transparent hover:border-gray-200 cursor-move"
                       }`
                 }`}
               >
-                {editingId !== subTask.id && (
-                  <GripVertical className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
-                )}
-                {editingId !== subTask.id && (
-                  <button
-                    onClick={() =>
-                      handleToggleComplete(subTask.id, subTask.isCompleted)
-                    }
-                    className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                <GripVertical className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
+                <button
+                  onClick={() => handleToggleComplete(subTask.id, subTask.isCompleted)}
+                  className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                    subTask.isCompleted
+                      ? "bg-[#2E6F40] border-[#2E6F40]"
+                      : "border-gray-300 hover:border-[#2E6F40]"
+                  }`}
+                >
+                  {subTask.isCompleted && <Check className="w-3 h-3 text-white" />}
+                </button>
+
+                {/* View Mode */}
+                <div className="flex-1 min-w-0">
+                  <p
+                    className={`font-medium ${
                       subTask.isCompleted
-                        ? "bg-[#2E6F40] border-[#2E6F40]"
-                        : "border-gray-300 hover:border-[#2E6F40]"
+                        ? "text-gray-400 line-through"
+                        : "text-gray-900"
                     }`}
                   >
-                    {subTask.isCompleted && <Check className="w-3 h-3 text-white" />}
-                  </button>
-                )}
-
-                {editingId === subTask.id ? (
-                  <div className="flex-1 space-y-2">
-                    <input
-                      type="text"
-                      value={editTitle}
-                      onChange={(e) => setEditTitle(e.target.value)}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          handleSaveEdit(subTask.id);
-                        } else if (e.key === "Escape") {
-                          handleCancelEdit();
-                        }
-                      }}
-                      placeholder="Subtask title *"
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
-                      autoFocus
-                    />
-                    <textarea
-                      value={editDescription}
-                      onChange={(e) => setEditDescription(e.target.value)}
-                      placeholder="Description (optional)"
-                      rows={2}
-                      className="w-full px-3 py-2 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
-                    />
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleSaveEdit(subTask.id)}
-                        className="px-4 py-2 bg-[#2E6F40] text-white rounded-lg hover:bg-[#68BA7F] transition-colors text-sm font-medium"
-                      >
-                        Save
-                      </button>
-                      <button
-                        onClick={handleCancelEdit}
-                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
-                      >
-                        Cancel
-                      </button>
-                    </div>
-                  </div>
-                ) : (
-                  <>
-                    <div className="flex-1 min-w-0">
-                      <p
-                        className={`font-medium ${
-                          subTask.isCompleted
-                            ? "text-gray-400 line-through"
-                            : "text-gray-900"
-                        }`}
-                      >
-                        {subTask.title}
-                      </p>
-                      {subTask.description && (
-                        <p className="text-sm text-gray-600 mt-1">
-                          {subTask.description}
-                        </p>
-                      )}
-                    </div>
-                    <div className="flex gap-1 shrink-0">
-                      <button
-                        onClick={() => handleEditClick(subTask)}
-                        className="text-blue-500 hover:text-blue-600 transition-colors p-1"
-                        title="Edit subtask"
-                      >
-                        <Edit2 className="w-4 h-4" />
-                      </button>
-                      <button
-                        onClick={() => handleDeleteSubTask(subTask.id)}
-                        className="text-red-500 hover:text-red-600 transition-colors p-1"
-                        title="Delete subtask"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            ))}
-
-            {/* Add Subtask Form */}
-            {adding ? (
-              <div className="p-4 bg-blue-50 rounded-xl border-2 border-blue-200">
-                <input
-                  type="text"
-                  value={newSubTaskTitle}
-                  onChange={(e) => setNewSubTaskTitle(e.target.value)}
-                  placeholder="Subtask title *"
-                  className="w-full px-3 py-2 mb-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
-                  autoFocus
-                />
-                <textarea
-                  value={newSubTaskDescription}
-                  onChange={(e) => setNewSubTaskDescription(e.target.value)}
-                  placeholder="Description (optional)"
-                  rows={2}
-                  className="w-full px-3 py-2 mb-3 border border-gray-300 rounded-lg resize-none focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
-                />
-                <div className="flex gap-2">
+                    {subTask.title}
+                  </p>
+                </div>
+                <div className="flex gap-1 shrink-0">
                   <button
-                    onClick={handleAddSubTask}
-                    className="px-4 py-2 bg-[#2E6F40] text-white rounded-lg hover:bg-[#68BA7F] transition-colors font-medium"
+                    onClick={() => setViewingSubTask(subTask)}
+                    className="text-[#2E6F40] hover:text-[#68BA7F] transition-colors p-1"
+                    title="View details"
                   >
-                    Add Subtask
+                    <Eye className="w-4 h-4" />
                   </button>
                   <button
-                    onClick={() => {
-                      setAdding(false);
-                      setNewSubTaskTitle("");
-                      setNewSubTaskDescription("");
-                    }}
-                    className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors"
+                    onClick={() => handleEditClick(subTask)}
+                    className="text-blue-500 hover:text-blue-600 transition-colors p-1"
+                    title="Edit subtask"
                   >
-                    Cancel
+                    <Edit2 className="w-4 h-4" />
+                  </button>
+                  <button
+                    onClick={() => handleDeleteSubTask(subTask.id)}
+                    className="text-red-500 hover:text-red-600 transition-colors p-1"
+                    title="Delete subtask"
+                  >
+                    <Trash2 className="w-4 h-4" />
                   </button>
                 </div>
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  setAdding(true);
-                  setTimeout(() => {
-                    if (contentRef.current) {
-                      contentRef.current.scrollTo({
-                        top: contentRef.current.scrollHeight,
-                        behavior: "smooth",
-                      });
-                    }
-                  }, 100);
-                }}
-                className="w-full p-4 bg-white border-2 border-dashed border-gray-300 rounded-xl hover:border-[#2E6F40] hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-gray-600 hover:text-[#2E6F40]"
-              >
-                <Plus className="w-5 h-5" />
-                <span className="font-medium">Add Subtask</span>
-              </button>
-            )}
+            ))}
+
+            {/* Add Subtask Button */}
+            <button
+              onClick={() => setShowAddModal(true)}
+              className="w-full p-4 border-2 border-dashed border-gray-300 rounded-xl hover:border-[#2E6F40] hover:bg-gray-50 transition-all flex items-center justify-center gap-2 text-gray-600 hover:text-[#2E6F40]"
+            >
+              <Plus className="w-5 h-5" />
+              <span className="font-medium">Add Subtask</span>
+            </button>
 
             {/* Empty State */}
-            {subTasks.length === 0 && !adding && (
+            {subTasks.length === 0 && (
               <div className="text-center py-12">
                 <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
                   <Plus className="w-8 h-8 text-gray-400" />
@@ -526,6 +437,28 @@ export default function SubTasksPage() {
           </div>
         )}
       </div>
+
+      {/* Add Subtask Modal */}
+      <AddSubTaskModal
+        isOpen={showAddModal}
+        onClose={() => setShowAddModal(false)}
+        onAdd={handleAddSubTask}
+      />
+
+      {/* Edit Subtask Modal */}
+      <EditSubTaskModal
+        isOpen={!!editingSubTask}
+        onClose={() => setEditingSubTask(null)}
+        onUpdate={handleUpdateSubTask}
+        subTask={editingSubTask}
+      />
+
+      {/* View Subtask Modal */}
+      <ViewSubTaskModal
+        isOpen={!!viewingSubTask}
+        onClose={() => setViewingSubTask(null)}
+        subTask={viewingSubTask}
+      />
     </div>
   );
 }

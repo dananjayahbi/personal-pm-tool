@@ -5,12 +5,21 @@ import { X } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
 import RichTextEditor from "@/components/common/RichTextEditor";
 
+interface SubTaskImage {
+  id: string;
+  filename: string;
+  base64Data: string;
+  mimeType: string;
+  order: number;
+}
+
 interface SubTask {
   id: string;
   title: string;
   description: string | null;
   isCompleted: boolean;
   order: number;
+  images?: SubTaskImage[];
 }
 
 interface EditSubTaskModalProps {
@@ -29,11 +38,70 @@ export default function EditSubTaskModal({
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
 
+  // Reconstruct description with embedded images from database
+  // Strategy: Replace img tags in the description with fresh base64 data from the images array
+  const reconstructDescriptionWithImages = (
+    desc: string | null,
+    images?: SubTaskImage[]
+  ): string => {
+    // If no images in database, return description as-is
+    if (!images || images.length === 0) {
+      return desc || "";
+    }
+
+    // Sort images by order
+    const sortedImages = [...images].sort((a, b) => a.order - b.order);
+
+    // If no description text, create HTML with just images
+    if (!desc || desc.trim() === "") {
+      return sortedImages
+        .map((img) => {
+          const dataUrl = `data:${img.mimeType};base64,${img.base64Data}`;
+          return `<img src="${dataUrl}" alt="${img.filename}" class="rounded-lg max-w-full h-auto" />`;
+        })
+        .join("<p></p>");
+    }
+
+    // Replace img tags in the description with fresh base64 data
+    // This ensures any stale/invalid img src attributes are refreshed
+    let imageIndex = 0;
+    let reconstructedDesc = desc.replace(/<img[^>]*>/gi, (imgTag) => {
+      if (imageIndex < sortedImages.length) {
+        const img = sortedImages[imageIndex];
+        const dataUrl = `data:${img.mimeType};base64,${img.base64Data}`;
+        imageIndex++;
+        return `<img src="${dataUrl}" alt="${img.filename}" class="rounded-lg max-w-full h-auto" />`;
+      }
+      // If we run out of fresh images, keep the original tag
+      return imgTag;
+    });
+
+    // If there are more images in DB than img tags in description,
+    // append the extra images at the end
+    if (imageIndex < sortedImages.length) {
+      const extraImages = sortedImages
+        .slice(imageIndex)
+        .map((img) => {
+          const dataUrl = `data:${img.mimeType};base64,${img.base64Data}`;
+          return `<img src="${dataUrl}" alt="${img.filename}" class="rounded-lg max-w-full h-auto" />`;
+        })
+        .join("<p></p>");
+      
+      reconstructedDesc += "<p></p>" + extraImages;
+    }
+
+    return reconstructedDesc;
+  };
+
   // Populate fields when subTask changes
   useEffect(() => {
     if (subTask) {
       setTitle(subTask.title);
-      setDescription(subTask.description || "");
+      const descWithImages = reconstructDescriptionWithImages(
+        subTask.description,
+        subTask.images
+      );
+      setDescription(descWithImages);
     }
   }, [subTask]);
 
@@ -112,6 +180,7 @@ export default function EditSubTaskModal({
               Description (optional)
             </label>
             <RichTextEditor
+              key={subTask?.id || 'new'}
               content={description}
               onChange={setDescription}
               placeholder="Describe your subtask... You can add images, formatting, links, etc."
