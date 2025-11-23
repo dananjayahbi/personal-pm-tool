@@ -42,6 +42,17 @@ export default function EditSubTaskModal({
   // The description already contains images with data-image-id attributes and src with base64 data
   useEffect(() => {
     if (subTask) {
+      console.log('=== EDIT MODAL - RECEIVED SUBTASK ===');
+      console.log('SubTask ID:', subTask.id);
+      console.log('Title:', subTask.title);
+      console.log('Description length:', subTask.description?.length || 0);
+      console.log('Description content:', subTask.description);
+      console.log('Images count:', subTask.images?.length || 0);
+      if (subTask.images && subTask.images.length > 0) {
+        console.log('Image IDs:', subTask.images.map(img => img.id));
+      }
+      console.log('=== END EDIT MODAL ===\n');
+      
       setTitle(subTask.title);
       setDescription(subTask.description || "");
     }

@@ -48,25 +48,37 @@ export async function GET(
     });
 
     // Add base64 data from cache or database and inject into description HTML
+    console.log('=== GET SUBTASKS - START ===');
+    console.log('1. Found', subTasks.length, 'subtasks');
+    
     const subTasksWithImages = await Promise.all(
-      subTasks.map(async (subTask) => {
+      subTasks.map(async (subTask, index) => {
+        console.log(`\n--- Processing SubTask ${index + 1} (ID: ${subTask.id}) ---`);
+        console.log('2. Original description from DB:', subTask.description?.substring(0, 300));
+        console.log('3. Image count:', subTask.images.length);
+        
         if (subTask.images.length === 0) {
+          console.log('4. No images, returning as-is');
           return subTask;
         }
 
         // Fetch base64 data for all images
         const imagesWithData = await Promise.all(
-          subTask.images.map(async (image) => {
+          subTask.images.map(async (image, imgIndex) => {
+            console.log(`  5.${imgIndex + 1}. Fetching image ${image.id}...`);
+            
             // Try to get from cache first
             let cachedImage = getImageFromCache(image.id);
             
             if (cachedImage) {
+              console.log(`  6.${imgIndex + 1}. Found in cache, base64 length:`, cachedImage.base64Data.length);
               return {
                 ...image,
                 base64Data: cachedImage.base64Data,
               };
             }
 
+            console.log(`  7.${imgIndex + 1}. Not in cache, fetching from DB...`);
             // If not in cache, fetch from database
             const fullImage = await prisma.subTaskImage.findUnique({
               where: { id: image.id },
@@ -74,6 +86,7 @@ export async function GET(
             });
 
             if (fullImage) {
+              console.log(`  8.${imgIndex + 1}. Found in DB, caching now...`);
               // Save to cache for next time
               saveImageToCache(image.id, fullImage.base64Data, image.mimeType, image.filename);
               
@@ -83,6 +96,7 @@ export async function GET(
               };
             }
 
+            console.log(`  9.${imgIndex + 1}. Image not found anywhere!`);
             return image;
           })
         );
@@ -91,20 +105,35 @@ export async function GET(
         let descriptionWithImages = subTask.description;
         
         if (descriptionWithImages && imagesWithData.length > 0) {
-          imagesWithData.forEach((image) => {
+          console.log('10. Injecting base64 into description...');
+          imagesWithData.forEach((image, imgIndex) => {
             if ('base64Data' in image && image.base64Data) {
+              // Match img tags with this image ID and inject src attribute
               const imgRegex = new RegExp(
                 `<img([^>]*)data-image-id="${image.id}"([^>]*)>`,
                 'g'
               );
               const dataUrl = `data:${image.mimeType};base64,${image.base64Data}`;
               
+              const beforeReplace = descriptionWithImages;
               descriptionWithImages = descriptionWithImages!.replace(
                 imgRegex,
-                `<img$1src="${dataUrl}"$2 data-image-id="${image.id}">`
+                (match, before, after) => {
+                  // Remove any existing src attribute
+                  const cleanedBefore = before.replace(/\s*src="[^"]*"\s*/g, ' ');
+                  const cleanedAfter = after.replace(/\s*src="[^"]*"\s*/g, ' ');
+                  // Add the new src attribute
+                  return `<img${cleanedBefore} src="${dataUrl}" data-image-id="${image.id}"${cleanedAfter}>`;
+                }
               );
+              
+              const wasReplaced = beforeReplace !== descriptionWithImages;
+              console.log(`  11.${imgIndex + 1}. Image ${image.id} replacement:`, wasReplaced ? 'SUCCESS' : 'FAILED (not found in description)');
             }
           });
+          
+          console.log('12. Final description length:', descriptionWithImages.length);
+          console.log('13. Final description preview:', descriptionWithImages.substring(0, 300));
         }
 
         return {
@@ -114,6 +143,8 @@ export async function GET(
         };
       })
     );
+    
+    console.log('\n=== GET SUBTASKS - END ===\n');
 
     return NextResponse.json({ subTasks: subTasksWithImages });
   } catch (error) {
@@ -171,6 +202,9 @@ export async function POST(
     const extractedImages: Array<{ filename: string; base64Data: string; mimeType: string }> = [];
     let processedDescription = description?.trim() || null;
     
+    console.log('=== POST SUBTASK - START ===');
+    console.log('1. Original description:', processedDescription?.substring(0, 200));
+    
     if (processedDescription) {
       const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
       let match;
@@ -181,6 +215,12 @@ export async function POST(
         const base64Data = match[2];
         const extension = mimeType.split('/')[1] || 'png';
         
+        console.log(`2. Found image ${imageIndex}:`, {
+          mimeType,
+          base64Length: base64Data.length,
+          extension
+        });
+        
         extractedImages.push({
           filename: `image-${imageIndex}.${extension}`,
           base64Data,
@@ -190,15 +230,20 @@ export async function POST(
         imageIndex++;
       }
       
-      // Don't remove img tags - keep them as placeholders
-      // We'll replace base64 data with image IDs after creation
+      console.log('3. Total images extracted:', extractedImages.length);
+      
+      // Remove img tags with base64 data - we'll replace them with ID-only placeholders after creation
+      if (extractedImages.length > 0) {
+        processedDescription = processedDescription.replace(/<img[^>]+src="data:[^"]*"[^>]*>/gi, '<!--IMAGE_PLACEHOLDER-->');
+        console.log('4. Description after placeholder replacement:', processedDescription?.substring(0, 200));
+      }
     }
 
     // Create subtask with images if found
     const subTask = await prisma.subTask.create({
       data: {
         title: title.trim(),
-        description: processedDescription, // Will be updated with image IDs below
+        description: processedDescription,
         taskId: id,
         order: newOrder,
         ...(extractedImages.length > 0 && {
@@ -217,21 +262,24 @@ export async function POST(
       },
     });
 
-    // Replace base64 data URLs with image IDs in the description
+    // Replace placeholders with img tags containing only image IDs (no src attribute)
     if (subTask.images && subTask.images.length > 0 && processedDescription) {
       let updatedDescription = processedDescription;
       const sortedImages = subTask.images.sort((a, b) => a.order - b.order);
       
-      sortedImages.forEach((image) => {
-        // Find and replace the first base64 img tag with one that includes the image ID
-        const imgRegex = /<img[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/;
-        updatedDescription = updatedDescription.replace(imgRegex, (match: string) => {
-          // Add data-image-id attribute to the img tag
-          return match.replace(/<img/, `<img data-image-id="${image.id}"`);
-        });
+      console.log('5. Replacing placeholders with image IDs...');
+      sortedImages.forEach((image, index) => {
+        console.log(`6. Replacing placeholder ${index + 1} with image ID:`, image.id);
+        // Replace the first placeholder with an img tag that has only the image ID
+        updatedDescription = updatedDescription.replace(
+          '<!--IMAGE_PLACEHOLDER-->',
+          `<img data-image-id="${image.id}" alt="${image.filename}" class="rounded-lg max-w-full h-auto" />`
+        );
       });
       
-      // Update the subtask with the new description containing image IDs
+      console.log('7. Final description to save in DB:', updatedDescription);
+      
+      // Update the subtask with the new description containing only image IDs
       await prisma.subTask.update({
         where: { id: subTask.id },
         data: { description: updatedDescription },
@@ -242,10 +290,14 @@ export async function POST(
 
     // Cache the images
     if (subTask.images && subTask.images.length > 0) {
+      console.log('8. Caching images...');
       subTask.images.forEach((image) => {
         saveImageToCache(image.id, image.base64Data, image.mimeType, image.filename);
+        console.log(`9. Cached image ${image.id} to cache file`);
       });
     }
+    
+    console.log('=== POST SUBTASK - END ===\n');
 
     return NextResponse.json({ subTask }, { status: 201 });
   } catch (error) {

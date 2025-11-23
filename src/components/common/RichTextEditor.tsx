@@ -27,8 +27,27 @@ export default function RichTextEditor({
       StarterKit,
       Image.configure({
         inline: true,
+        allowBase64: true,
         HTMLAttributes: {
           class: "rounded-lg max-w-full h-auto",
+        },
+      }).extend({
+        addAttributes() {
+          return {
+            ...this.parent?.(),
+            'data-image-id': {
+              default: null,
+              parseHTML: (element) => element.getAttribute('data-image-id'),
+              renderHTML: (attributes) => {
+                if (!attributes['data-image-id']) {
+                  return {};
+                }
+                return {
+                  'data-image-id': attributes['data-image-id'],
+                };
+              },
+            },
+          };
         },
       }),
       Link.configure({
@@ -82,9 +101,16 @@ export default function RichTextEditor({
 
   useEffect(() => {
     if (editor && content !== editor.getHTML()) {
+      console.log('=== RICHTEXTEDITOR - CONTENT UPDATE ===');
+      console.log('New content length:', content.length);
+      console.log('New content preview:', content.substring(0, 500));
+      console.log('Current editor HTML:', editor.getHTML().substring(0, 500));
+      
       // Use a small timeout to ensure the editor is ready
       const timer = setTimeout(() => {
         editor.commands.setContent(content, { emitUpdate: false });
+        console.log('After setContent, editor HTML:', editor.getHTML().substring(0, 500));
+        console.log('=== END RICHTEXTEDITOR ===\n');
       }, 0);
       return () => clearTimeout(timer);
     }

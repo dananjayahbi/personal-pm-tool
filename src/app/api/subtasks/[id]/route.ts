@@ -92,6 +92,10 @@ export async function PUT(
     }
 
     // Extract embedded images from new HTML description
+    console.log('=== PUT SUBTASK - START ===');
+    console.log('1. Subtask ID:', id);
+    console.log('2. Original description from request:', description?.substring(0, 300));
+    
     const newImages = new Map<string, { filename: string; base64Data: string; mimeType: string; imageId?: string }>();
     const existingImageIds = new Set<string>();
     let processedDescription = description?.trim() || null;
@@ -104,7 +108,10 @@ export async function PUT(
       while ((existingMatch = existingImgRegex.exec(processedDescription)) !== null) {
         const imageId = existingMatch[1];
         existingImageIds.add(imageId);
+        console.log('3. Found existing image ID:', imageId);
       }
+      
+      console.log('4. Total existing images:', existingImageIds.size);
       
       // Then, find new images (those with base64 data but no image ID)
       const newImgRegex = /<img(?![^>]*data-image-id)[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/g;
@@ -117,6 +124,12 @@ export async function PUT(
         const extension = mimeType.split('/')[1] || 'png';
         const imageSource = `data:${mimeType};base64,${base64Data}`;
         
+        console.log(`5. Found NEW image ${imageIndex}:`, {
+          mimeType,
+          base64Length: base64Data.length,
+          extension
+        });
+        
         newImages.set(imageSource, {
           filename: `image-${imageIndex}.${extension}`,
           base64Data,
@@ -125,10 +138,37 @@ export async function PUT(
         
         imageIndex++;
       }
+      
+      console.log('6. Total new images:', newImages.size);
+      
+      // Remove all new images (with base64) and replace with placeholders
+      // Keep existing images (with data-image-id) as-is, but remove src attributes
+      if (newImages.size > 0) {
+        processedDescription = processedDescription.replace(
+          /<img(?![^>]*data-image-id)[^>]+src="data:[^"]*"[^>]*>/gi, 
+          '<!--IMAGE_PLACEHOLDER-->'
+        );
+        console.log('7. Description after new image placeholder replacement:', processedDescription?.substring(0, 300));
+      }
+      
+      // Remove src attributes from existing images (keep only data-image-id)
+      processedDescription = processedDescription.replace(
+        /<img([^>]*data-image-id="[^"]+")([^>]*)>/g,
+        (match: string, idPart: string, rest: string) => {
+          // Remove src attribute if present
+          const cleanedRest = rest.replace(/\s*src="[^"]*"\s*/g, ' ');
+          console.log('8. Removing src from existing image:', idPart);
+          return `<img${idPart}${cleanedRest}>`;
+        }
+      );
+      
+      console.log('9. Final processed description:', processedDescription?.substring(0, 300));
     }
 
     // Find images to delete (images in DB that are not referenced by ID)
     const imagesToDelete = subTask.images.filter(img => !existingImageIds.has(img.id));
+    
+    console.log('10. Images to delete:', imagesToDelete.map(img => img.id));
 
     // Delete removed images
     if (imagesToDelete.length > 0) {
@@ -141,6 +181,7 @@ export async function PUT(
       // Remove from cache
       imagesToDelete.forEach((image) => {
         removeImageFromCache(image.id);
+        console.log('11. Deleted image from cache:', image.id);
       });
     }
 
@@ -174,19 +215,24 @@ export async function PUT(
 
     // Replace base64 data URLs with image IDs in the description for newly added images
     if (newImages.size > 0 && processedDescription) {
+      console.log('12. Replacing placeholders with new image IDs...');
       let updatedDescription = processedDescription;
       const newlyCreatedImages = updatedSubTask.images
         .filter(img => !existingImageIds.has(img.id))
         .sort((a, b) => a.order - b.order);
       
-      newlyCreatedImages.forEach((image) => {
-        // Find and replace the first base64 img tag (without data-image-id) with one that includes the image ID
-        const imgRegex = /<img(?![^>]*data-image-id)[^>]+src="data:([^;]+);base64,([^"]+)"[^>]*>/;
-        updatedDescription = updatedDescription.replace(imgRegex, (match: string) => {
-          // Add data-image-id attribute to the img tag
-          return match.replace(/<img/, `<img data-image-id="${image.id}"`);
-        });
+      console.log('13. Newly created images:', newlyCreatedImages.map(img => img.id));
+      
+      newlyCreatedImages.forEach((image, index) => {
+        console.log(`14. Replacing placeholder ${index + 1} with image ID:`, image.id);
+        // Replace the first placeholder with an img tag that has only the image ID (no src)
+        updatedDescription = updatedDescription.replace(
+          '<!--IMAGE_PLACEHOLDER-->',
+          `<img data-image-id="${image.id}" alt="${image.filename}" class="rounded-lg max-w-full h-auto" />`
+        );
       });
+      
+      console.log('15. Final description to save:', updatedDescription);
       
       // Update the subtask with the new description containing image IDs
       await prisma.subTask.update({
@@ -195,14 +241,29 @@ export async function PUT(
       });
       
       updatedSubTask.description = updatedDescription;
+    } else if (processedDescription && processedDescription !== updatedSubTask.description) {
+      console.log('16. No new images, but description changed (likely removed src from existing)');
+      console.log('17. Updating description to:', processedDescription);
+      
+      // If no new images but description changed (e.g., removed src from existing images)
+      await prisma.subTask.update({
+        where: { id: updatedSubTask.id },
+        data: { description: processedDescription },
+      });
+      
+      updatedSubTask.description = processedDescription;
     }
 
     // Cache all images (existing and new)
     if (updatedSubTask.images && updatedSubTask.images.length > 0) {
+      console.log('18. Caching images...');
       updatedSubTask.images.forEach((image) => {
         saveImageToCache(image.id, image.base64Data, image.mimeType, image.filename);
+        console.log('19. Cached image:', image.id);
       });
     }
+    
+    console.log('=== PUT SUBTASK - END ===\n');
 
     return NextResponse.json({ subTask: updatedSubTask });
   } catch (error) {

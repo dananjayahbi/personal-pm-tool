@@ -32,6 +32,17 @@ export default function ViewSubTaskModal({
 }: ViewSubTaskModalProps) {
   if (!isOpen || !subTask) return null;
 
+  console.log('=== VIEW MODAL - DISPLAYING SUBTASK ===');
+  console.log('SubTask ID:', subTask.id);
+  console.log('Title:', subTask.title);
+  console.log('Description length:', subTask.description?.length || 0);
+  console.log('Description content:', subTask.description);
+  console.log('Images count:', subTask.images?.length || 0);
+  if (subTask.images && subTask.images.length > 0) {
+    console.log('Image IDs:', subTask.images.map(img => img.id));
+  }
+  console.log('=== END VIEW MODAL ===\n');
+
   return (
     <>
       {/* Backdrop */}
