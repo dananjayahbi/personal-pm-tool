@@ -1,12 +1,11 @@
 "use client";
 
 import { useState, useEffect, useRef } from "react";
-import { X, Plus, Trash2, GripVertical, Check, Edit2, ExternalLink } from "lucide-react";
+import { X, Plus, Trash2, GripVertical, Check, Edit2, ExternalLink, Eye } from "lucide-react";
 import { showToast } from "@/lib/utils/toast";
-import { base64ToImageUrl } from "@/lib/utils/imageEngineClient";
 import AddSubTaskModal from "./AddSubTaskModal";
-import ImageViewerModal from "./ImageViewerModal";
-import RichTextEditor from "@/components/common/RichTextEditor";
+import EditSubTaskModal from "./EditSubTaskModal";
+import ViewSubTaskModal from "./ViewSubTaskModal";
 
 interface SubTaskImage {
   id: string;
@@ -41,11 +40,9 @@ export default function SubTasksModal({
   const [subTasks, setSubTasks] = useState<SubTask[]>([]);
   const [loading, setLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editTitle, setEditTitle] = useState("");
-  const [editDescription, setEditDescription] = useState("");
+  const [editingSubTask, setEditingSubTask] = useState<SubTask | null>(null);
   const [draggedSubTaskId, setDraggedSubTaskId] = useState<string | null>(null);
-  const [imageViewer, setImageViewer] = useState<{ url: string; name: string } | null>(null);
+  const [viewingSubTask, setViewingSubTask] = useState<SubTask | null>(null);
   const contentRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -176,19 +173,11 @@ export default function SubTasksModal({
   };
 
   const handleEditClick = (subtask: SubTask) => {
-    setEditingId(subtask.id);
-    setEditTitle(subtask.title);
-    setEditDescription(subtask.description || "");
+    setEditingSubTask(subtask);
   };
 
-  const handleCancelEdit = () => {
-    setEditingId(null);
-    setEditTitle("");
-    setEditDescription("");
-  };
-
-  const handleSaveEdit = async (subtaskId: string) => {
-    if (!editTitle.trim()) {
+  const handleUpdateSubTask = async (subtaskId: string, title: string, description: string) => {
+    if (!title.trim()) {
       showToast.error("Subtask title is required");
       return;
     }
@@ -198,24 +187,18 @@ export default function SubTasksModal({
     setSubTasks((prev) =>
       prev.map((st) =>
         st.id === subtaskId
-          ? { ...st, title: editTitle.trim(), description: editDescription || null }
+          ? { ...st, title: title.trim(), description: description || null }
           : st
       )
     );
-
-    const titleValue = editTitle.trim();
-    const descValue = editDescription;
-    setEditingId(null);
-    setEditTitle("");
-    setEditDescription("");
 
     try {
       const response = await fetch(`/api/subtasks/${subtaskId}`, {
         method: "PUT",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          title: titleValue,
-          description: descValue || null,
+          title: title.trim(),
+          description: description || null,
         }),
       });
 
@@ -353,15 +336,13 @@ export default function SubTasksModal({
                 {subTasks.map((subTask) => (
                   <div
                     key={subTask.id}
-                    draggable={editingId !== subTask.id}
+                    draggable={true}
                     onDragStart={(e) => handleDragStart(e, subTask.id)}
                     onDragOver={handleDragOver}
                     onDrop={(e) => handleDrop(e, subTask.id)}
                     className={`flex items-start gap-3 p-4 rounded-xl border-2 transition-all ${
                       subTask.id.startsWith("temp-")
                         ? "bg-gray-100 border-gray-300 animate-pulse"
-                        : editingId === subTask.id
-                        ? "bg-blue-50 border-blue-200"
                         : `bg-gray-50 ${
                             draggedSubTaskId === subTask.id
                               ? "border-[#2E6F40] opacity-50 cursor-move"
@@ -369,119 +350,53 @@ export default function SubTasksModal({
                           }`
                     }`}
                   >
-                    {editingId !== subTask.id && (
-                      <GripVertical className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
-                    )}
-                    {editingId !== subTask.id && (
-                      <button
-                        onClick={() => handleToggleComplete(subTask.id, subTask.isCompleted)}
-                        className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                    <GripVertical className="w-5 h-5 text-gray-400 mt-0.5 shrink-0" />
+                    <button
+                      onClick={() => handleToggleComplete(subTask.id, subTask.isCompleted)}
+                      className={`w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 mt-0.5 transition-all ${
+                        subTask.isCompleted
+                          ? "bg-[#2E6F40] border-[#2E6F40]"
+                          : "border-gray-300 hover:border-[#2E6F40]"
+                      }`}
+                    >
+                      {subTask.isCompleted && <Check className="w-3 h-3 text-white" />}
+                    </button>
+
+                    {/* View Mode */}
+                    <div className="flex-1 min-w-0">
+                      <p
+                        className={`font-medium ${
                           subTask.isCompleted
-                            ? "bg-[#2E6F40] border-[#2E6F40]"
-                            : "border-gray-300 hover:border-[#2E6F40]"
+                            ? "text-gray-400 line-through"
+                            : "text-gray-900"
                         }`}
                       >
-                        {subTask.isCompleted && <Check className="w-3 h-3 text-white" />}
+                        {subTask.title}
+                      </p>
+                    </div>
+                    <div className="flex gap-1 shrink-0">
+                      <button
+                        onClick={() => setViewingSubTask(subTask)}
+                        className="text-[#2E6F40] hover:text-[#68BA7F] transition-colors p-1"
+                        title="View details"
+                      >
+                        <Eye className="w-4 h-4" />
                       </button>
-                    )}
-
-                    {editingId === subTask.id ? (
-                      // Edit Mode
-                      <div className="flex-1 space-y-2">
-                        <input
-                          type="text"
-                          value={editTitle}
-                          onChange={(e) => setEditTitle(e.target.value)}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter") {
-                              handleSaveEdit(subTask.id);
-                            } else if (e.key === "Escape") {
-                              handleCancelEdit();
-                            }
-                          }}
-                          placeholder="Subtask title *"
-                          className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#2E6F40] focus:border-transparent"
-                          autoFocus
-                        />
-                        
-                        <RichTextEditor
-                          content={editDescription}
-                          onChange={setEditDescription}
-                          placeholder="Description (optional)"
-                        />
-
-                        <div className="flex gap-2">
-                          <button
-                            onClick={() => handleSaveEdit(subTask.id)}
-                            className="px-4 py-2 bg-[#2E6F40] text-white rounded-lg hover:bg-[#68BA7F] transition-colors text-sm font-medium"
-                          >
-                            Save
-                          </button>
-                          <button
-                            onClick={handleCancelEdit}
-                            className="px-4 py-2 bg-gray-200 text-gray-700 rounded-lg hover:bg-gray-300 transition-colors text-sm font-medium"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      // View Mode
-                      <>
-                        <div className="flex-1 min-w-0">
-                          <p
-                            className={`font-medium ${
-                              subTask.isCompleted
-                                ? "text-gray-400 line-through"
-                                : "text-gray-900"
-                            }`}
-                          >
-                            {subTask.title}
-                          </p>
-                          {subTask.description && (
-                            <div 
-                              className="text-sm text-gray-600 mt-1 prose prose-sm max-w-none"
-                              dangerouslySetInnerHTML={{ __html: subTask.description }}
-                            />
-                          )}
-                          {/* Display Images */}
-                          {subTask.images && subTask.images.length > 0 && (
-                            <div className="grid grid-cols-4 gap-2 mt-2">
-                              {subTask.images.map((img) => (
-                                <div key={img.id} className="relative group">
-                                  <img
-                                    src={base64ToImageUrl(img.base64Data, img.mimeType)}
-                                    alt={img.filename}
-                                    className="w-full h-16 object-cover rounded-lg cursor-pointer hover:opacity-80 transition-opacity"
-                                    onClick={() => setImageViewer({
-                                      url: base64ToImageUrl(img.base64Data, img.mimeType),
-                                      name: img.filename
-                                    })}
-                                    title={img.filename}
-                                  />
-                                </div>
-                              ))}
-                            </div>
-                          )}
-                        </div>
-                        <div className="flex gap-1 shrink-0">
-                          <button
-                            onClick={() => handleEditClick(subTask)}
-                            className="text-blue-500 hover:text-blue-600 transition-colors p-1"
-                            title="Edit subtask"
-                          >
-                            <Edit2 className="w-4 h-4" />
-                          </button>
-                          <button
-                            onClick={() => handleDeleteSubTask(subTask.id)}
-                            className="text-red-500 hover:text-red-600 transition-colors p-1"
-                            title="Delete subtask"
-                          >
-                            <Trash2 className="w-4 h-4" />
-                          </button>
-                        </div>
-                      </>
-                    )}
+                      <button
+                        onClick={() => handleEditClick(subTask)}
+                        className="text-blue-500 hover:text-blue-600 transition-colors p-1"
+                        title="Edit subtask"
+                      >
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDeleteSubTask(subTask.id)}
+                        className="text-red-500 hover:text-red-600 transition-colors p-1"
+                        title="Delete subtask"
+                      >
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
                 ))}
 
@@ -521,12 +436,19 @@ export default function SubTasksModal({
         onAdd={handleAddSubTask}
       />
 
-      {/* Image Viewer Modal */}
-      <ImageViewerModal
-        isOpen={!!imageViewer}
-        onClose={() => setImageViewer(null)}
-        imageUrl={imageViewer?.url || ""}
-        imageName={imageViewer?.name || ""}
+      {/* Edit Subtask Modal */}
+      <EditSubTaskModal
+        isOpen={!!editingSubTask}
+        onClose={() => setEditingSubTask(null)}
+        onUpdate={handleUpdateSubTask}
+        subTask={editingSubTask}
+      />
+
+      {/* View Subtask Modal */}
+      <ViewSubTaskModal
+        isOpen={!!viewingSubTask}
+        onClose={() => setViewingSubTask(null)}
+        subTask={viewingSubTask}
       />
     </>
   );
