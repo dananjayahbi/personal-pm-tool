@@ -43,4 +43,4 @@ next-env.d.ts
 /src/generated/prisma
 
 # image cache
-/public/assets/cache/base64/image-cache.json
+/public/assets/cache/base64/

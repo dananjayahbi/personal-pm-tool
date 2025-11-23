@@ -1,6 +1,7 @@
 /**
  * Image Engine Utility
  * Handles image to base64 conversion and caching for SubTask images
+ * Each image is stored in its own JSON file for better performance
  */
 
 import fs from "fs";
@@ -8,7 +9,6 @@ import path from "path";
 
 // Cache directory path
 const CACHE_DIR = path.join(process.cwd(), "public", "assets", "cache", "base64");
-const CACHE_FILE = path.join(CACHE_DIR, "image-cache.json");
 
 // Maximum file size (5MB)
 const MAX_FILE_SIZE = 5 * 1024 * 1024;
@@ -31,10 +31,6 @@ interface CachedImage {
   cachedAt: string;
 }
 
-interface ImageCache {
-  [imageId: string]: CachedImage;
-}
-
 /**
  * Ensure cache directory exists
  */
@@ -45,35 +41,10 @@ function ensureCacheDir(): void {
 }
 
 /**
- * Load cache from JSON file
+ * Get cache file path for a specific image
  */
-function loadCache(): ImageCache {
-  ensureCacheDir();
-  
-  if (!fs.existsSync(CACHE_FILE)) {
-    return {};
-  }
-  
-  try {
-    const data = fs.readFileSync(CACHE_FILE, "utf-8");
-    return JSON.parse(data);
-  } catch (error) {
-    console.error("Error loading cache:", error);
-    return {};
-  }
-}
-
-/**
- * Save cache to JSON file
- */
-function saveCache(cache: ImageCache): void {
-  ensureCacheDir();
-  
-  try {
-    fs.writeFileSync(CACHE_FILE, JSON.stringify(cache, null, 2), "utf-8");
-  } catch (error) {
-    console.error("Error saving cache:", error);
-  }
+function getCacheFilePath(imageId: string): string {
+  return path.join(CACHE_DIR, `${imageId}.json`);
 }
 
 /**
@@ -149,8 +120,20 @@ export function base64ToImageUrl(base64Data: string, mimeType: string): string {
  * Server-side only
  */
 export function getImageFromCache(imageId: string): CachedImage | null {
-  const cache = loadCache();
-  return cache[imageId] || null;
+  ensureCacheDir();
+  const cacheFilePath = getCacheFilePath(imageId);
+  
+  if (!fs.existsSync(cacheFilePath)) {
+    return null;
+  }
+  
+  try {
+    const data = fs.readFileSync(cacheFilePath, "utf-8");
+    return JSON.parse(data);
+  } catch (error) {
+    console.error(`Error loading cache for image ${imageId}:`, error);
+    return null;
+  }
 }
 
 /**
@@ -163,9 +146,9 @@ export function saveImageToCache(
   mimeType: string,
   filename: string
 ): void {
-  const cache = loadCache();
+  ensureCacheDir();
   
-  cache[imageId] = {
+  const cachedImage: CachedImage = {
     id: imageId,
     base64Data,
     mimeType,
@@ -173,7 +156,13 @@ export function saveImageToCache(
     cachedAt: new Date().toISOString(),
   };
   
-  saveCache(cache);
+  const cacheFilePath = getCacheFilePath(imageId);
+  
+  try {
+    fs.writeFileSync(cacheFilePath, JSON.stringify(cachedImage, null, 2), "utf-8");
+  } catch (error) {
+    console.error(`Error saving cache for image ${imageId}:`, error);
+  }
 }
 
 /**
@@ -181,11 +170,14 @@ export function saveImageToCache(
  * Server-side only
  */
 export function removeImageFromCache(imageId: string): void {
-  const cache = loadCache();
+  const cacheFilePath = getCacheFilePath(imageId);
   
-  if (cache[imageId]) {
-    delete cache[imageId];
-    saveCache(cache);
+  if (fs.existsSync(cacheFilePath)) {
+    try {
+      fs.unlinkSync(cacheFilePath);
+    } catch (error) {
+      console.error(`Error removing cache for image ${imageId}:`, error);
+    }
   }
 }
 
@@ -194,22 +186,33 @@ export function removeImageFromCache(imageId: string): void {
  * Server-side only
  */
 export function clearOldCache(): void {
-  const cache = loadCache();
+  ensureCacheDir();
+  
   const thirtyDaysAgo = new Date();
   thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
   
-  let modified = false;
-  
-  Object.keys(cache).forEach((imageId) => {
-    const cachedAt = new Date(cache[imageId].cachedAt);
-    if (cachedAt < thirtyDaysAgo) {
-      delete cache[imageId];
-      modified = true;
-    }
-  });
-  
-  if (modified) {
-    saveCache(cache);
+  try {
+    const files = fs.readdirSync(CACHE_DIR);
+    
+    files.forEach((file) => {
+      if (!file.endsWith(".json")) return;
+      
+      const filePath = path.join(CACHE_DIR, file);
+      
+      try {
+        const data = fs.readFileSync(filePath, "utf-8");
+        const cachedImage: CachedImage = JSON.parse(data);
+        const cachedAt = new Date(cachedImage.cachedAt);
+        
+        if (cachedAt < thirtyDaysAgo) {
+          fs.unlinkSync(filePath);
+        }
+      } catch (error) {
+        console.error(`Error processing cache file ${file}:`, error);
+      }
+    });
+  } catch (error) {
+    console.error("Error clearing old cache:", error);
   }
 }
 
@@ -218,13 +221,32 @@ export function clearOldCache(): void {
  * Server-side only
  */
 export function getCacheStats(): { count: number; size: string } {
-  const cache = loadCache();
-  const count = Object.keys(cache).length;
+  ensureCacheDir();
   
+  let count = 0;
   let totalSize = 0;
-  Object.values(cache).forEach((image) => {
-    totalSize += (image.base64Data.length * 3) / 4; // Estimate binary size
-  });
+  
+  try {
+    const files = fs.readdirSync(CACHE_DIR);
+    
+    files.forEach((file) => {
+      if (!file.endsWith(".json")) return;
+      
+      const filePath = path.join(CACHE_DIR, file);
+      
+      try {
+        const data = fs.readFileSync(filePath, "utf-8");
+        const cachedImage: CachedImage = JSON.parse(data);
+        
+        count++;
+        totalSize += (cachedImage.base64Data.length * 3) / 4; // Estimate binary size
+      } catch (error) {
+        console.error(`Error reading cache file ${file}:`, error);
+      }
+    });
+  } catch (error) {
+    console.error("Error getting cache stats:", error);
+  }
   
   const sizeMB = (totalSize / (1024 * 1024)).toFixed(2);
   
